@@ -1,43 +1,36 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
-import { Separator } from "@/components/ui/separator";
+import { GoogleAuthProvider, signInWithPopup, onAuthStateChanged } from "firebase/auth";
+import { auth } from "@/lib/firebase";
 import { Logo } from "@/components/logo";
-import { zodResolver } from "@hookform/resolvers/zod";
-import Link from "next/link";
-import { useForm } from "react-hook-form";
-import { z } from "zod";
 
-const formSchema = z.object({
-  email: z.string().email(),
-  password: z.string().min(8, "Password must be at least 8 characters long"),
-});
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
 
 const Login = () => {
-  const form = useForm<z.infer<typeof formSchema>>({
-    defaultValues: {
-      email: "",
-      password: "",
-    },
-    resolver: zodResolver(formSchema),
-  });
+  const router = useRouter();
 
-  const onSubmit = (data: z.infer<typeof formSchema>) => {
-    console.log(data);
+  const onLogin = async () => {
+    const provider = new GoogleAuthProvider();
+    await signInWithPopup(auth, provider);
   };
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (!user) {
+        return;
+      }
+      router.push(`/chat?uid=${user.uid}`);
+    });
+
+    return () => unsubscribe();
+  }, [router]);
+
 
   return (
     <div className="min-h-screen flex items-center justify-center">
-      <div className="relative max-w-sm w-full border rounded-xl px-8 py-8 shadow-lg/5 dark:shadow-xl bg-gradient-to-b from-muted/50 dark:from-transparent to-card overflow-hidden">
+      <div className="relative max-w-sm w-full border rounded-xl px-8 py-8 shadow-lg/5 dark:shadow-xl bg-linear-to-b from-muted/50 dark:from-transparent to-card overflow-hidden">
         <div
           className="absolute inset-0 z-0 -top-px -left-px"
           style={{
@@ -87,83 +80,15 @@ const Login = () => {
         />
 
         <div className="relative isolate flex flex-col items-center">
-          <Logo className="h-9 w-9" />
+          {/* <Logo className="h-9 w-9" src="" /> */}
           <p className="mt-4 text-xl font-semibold tracking-tight">
-            Log in to Shadcn UI Blocks
+            Log in to Free.ai
           </p>
 
-          <Button className="mt-8 w-full gap-3">
+          <Button className="mt-8 w-full gap-3 hover:cursor-pointer" onClick={onLogin}>
             <GoogleLogo />
             Continue with Google
           </Button>
-
-          <div className="my-7 w-full flex items-center justify-center overflow-hidden">
-            <Separator />
-            <span className="text-sm px-2">OR</span>
-            <Separator />
-          </div>
-
-          <Form {...form}>
-            <form
-              className="w-full space-y-6"
-              onSubmit={form.handleSubmit(onSubmit)}
-            >
-              <FormField
-                control={form.control}
-                name="email"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Email</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="email"
-                        placeholder="Email"
-                        className="w-full"
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="password"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Password</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="password"
-                        placeholder="Password"
-                        className="w-full"
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <Button type="submit" className="w-full">
-                Continue with Email
-              </Button>
-            </form>
-          </Form>
-
-          <div className="mt-5 space-y-5">
-            <Link
-              href="#"
-              className="text-sm block underline text-muted-foreground text-center"
-            >
-              Forgot your password?
-            </Link>
-            <p className="text-sm text-center">
-              Don&apos;t have an account?
-              <Link href="#" className="ml-1 underline text-muted-foreground">
-                Create account
-              </Link>
-            </p>
-          </div>
         </div>
       </div>
     </div>

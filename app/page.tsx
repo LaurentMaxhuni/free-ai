@@ -1,5 +1,7 @@
-import { ComponentExample } from "@/components/component-example";
+// import LandingPage from "@/pages/LandingPage";
 
-export default function Page() {
-return <ComponentExample />;
-}
+const Page = () => {
+  return <div>Landing Page</div>;
+};
+
+export default Page;
