@@ -1,7 +1,17 @@
-// import LandingPage from "@/pages/LandingPage";
+import Features from "@/components/features";
+import Hero from "@/components/hero";
+import Navbar from "@/components/navbar";
+import { ModeToggle } from "@/components/ui/mode-toggle";
 
 const Page = () => {
-  return <div>Landing Page</div>;
+  return (
+    <>
+      <Navbar />
+      <Hero />
+      <Features />
+      <ModeToggle />
+    </>
+  );
 };
 
 export default Page;
