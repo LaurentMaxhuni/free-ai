@@ -2,6 +2,7 @@ import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/logo";
 import { NavMenu } from "@/components/nav-menu";
 import { NavigationSheet } from "@/components/navigation-sheet";
+import Link from "next/link";
 
 const Navbar = () => {
   return (
@@ -13,10 +14,9 @@ const Navbar = () => {
         <NavMenu className="hidden md:block" />
 
         <div className="flex items-center gap-3">
-          <Button variant="outline" className="hidden sm:inline-flex">
-            Sign In
+          <Button nativeButton={false} className="cursor-pointer" render={<Link href="/login" />}>
+            Get Started
           </Button>
-          <Button>Get Started</Button>
 
           {/* Mobile Menu */}
           <div className="md:hidden">

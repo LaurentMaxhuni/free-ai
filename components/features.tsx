@@ -10,46 +10,46 @@ import {
 
 const features = [
   {
-    icon: Goal,
-    title: "Identify Opportunities",
+    icon: Zap,
+    title: "AI-Powered Generation",
     description:
-      "Easily uncover untapped areas to explore and expand your reach effortlessly.",
-  },
-  {
-    icon: BookCheck,
-    title: "Build Authority",
-    description:
-      "Create valuable content that resonates, inspires trust, and positions you as an expert.",
+      "Generate high-quality content instantly using advanced AI algorithms tailored to your needs.",
   },
   {
     icon: ChartPie,
-    title: "Instant Insights",
+    title: "Analytics Dashboard",
     description:
-      "Gain immediate, actionable insights with a quick glance, enabling fast decision-making.",
-  },
-  {
-    icon: Users,
-    title: "Engage with Your Audience",
-    description:
-      "Boost audience engagement with interactive features like polls, quizzes, and forms.",
+      "Track performance metrics and gain insights into your content's impact in real-time.",
   },
   {
     icon: FolderSync,
-    title: "Automate Your Workflow",
+    title: "Multi-Platform Publishing",
     description:
-      "Streamline your processes by automating repetitive tasks, saving time and reducing effort.",
+      "Publish your content across multiple platforms simultaneously with a single click.",
   },
   {
-    icon: Zap,
-    title: "Accelerate Growth",
+    icon: Users,
+    title: "Collaboration Tools",
     description:
-      "Supercharge your growth by implementing strategies that drive results quickly and efficiently.",
+      "Work seamlessly with your team using built-in commenting, reviews, and version control.",
+  },
+  {
+    icon: BookCheck,
+    title: "Content Library",
+    description:
+      "Access a comprehensive library of templates, frameworks, and pre-built content blocks.",
+  },
+  {
+    icon: Goal,
+    title: "SEO Optimization",
+    description:
+      "Automatically optimize your content for search engines to improve visibility and reach.",
   },
 ];
 
 const Features = () => {
   return (
-    <div className="min-h-screen flex items-center justify-center">
+    <div className="min-h-screen flex items-center justify-center px-6 py-12">
       <div className="max-w-(--breakpoint-lg) w-full py-10 px-6">
         <h2 className="text-4xl md:text-[2.5rem] md:leading-[1.2] font-semibold tracking-[-0.03em] sm:max-w-xl text-pretty">
           Strengthen Your Strategy

@@ -7,6 +7,7 @@ import { Logo } from "@/components/logo";
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { BackgroundPattern } from "./background-pattern";
 
 const Login = () => {
   const router = useRouter();
@@ -16,20 +17,22 @@ const Login = () => {
     await signInWithPopup(auth, provider);
   };
 
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      if (!user) {
-        return;
-      }
-      router.push(`/chat?uid=${user.uid}`);
-    });
+  // useEffect(() => {
+  //   const unsubscribe = onAuthStateChanged(auth, (user) => {
+  //     if (!user) {
+  //       return;
+  //     }
+  //     router.push(`/chat?uid=${user.uid}`);
+  //   });
 
-    return () => unsubscribe();
-  }, [router]);
+  //   return () => unsubscribe();
+  // }, [router]);
 
 
   return (
     <div className="min-h-screen flex items-center justify-center">
+      <BackgroundPattern />
+
       <div className="relative max-w-sm w-full border rounded-xl px-8 py-8 shadow-lg/5 dark:shadow-xl bg-linear-to-b from-muted/50 dark:from-transparent to-card overflow-hidden">
         <div
           className="absolute inset-0 z-0 -top-px -left-px"
@@ -80,7 +83,7 @@ const Login = () => {
         />
 
         <div className="relative isolate flex flex-col items-center">
-          {/* <Logo className="h-9 w-9" src="" /> */}
+          <Logo className="text-3xl user-select-none" />
           <p className="mt-4 text-xl font-semibold tracking-tight">
             Log in to Free.ai
           </p>
