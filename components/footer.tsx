@@ -1,38 +1,23 @@
 import { Separator } from "@/components/ui/separator";
 import {
-  DribbbleIcon,
-  GithubIcon,
-  TwitchIcon,
-  TwitterIcon,
+  GithubIcon
 } from "lucide-react";
 import Link from "next/link";
 import { Logo } from "./logo";
 
 const footerLinks = [
   {
-    title: "Overview",
-    href: "#",
+    title: "Home",
+    href: "#home",
   },
   {
     title: "Features",
-    href: "#",
+    href: "#features",
   },
   {
-    title: "Pricing",
-    href: "#",
-  },
-  {
-    title: "Careers",
-    href: "#",
-  },
-  {
-    title: "Help",
-    href: "#",
-  },
-  {
-    title: "Privacy",
-    href: "#",
-  },
+    title: "FAQ",
+    href: "#faq",
+  }
 ];
 
 const Footer = () => {

@@ -17,17 +17,16 @@ const Login = () => {
     await signInWithPopup(auth, provider);
   };
 
-  // useEffect(() => {
-  //   const unsubscribe = onAuthStateChanged(auth, (user) => {
-  //     if (!user) {
-  //       return;
-  //     }
-  //     router.push(`/chat?uid=${user.uid}`);
-  //   });
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (!user) {
+        return;
+      }
+      router.push(`/chat`);
+    });
 
-  //   return () => unsubscribe();
-  // }, [router]);
-
+    return () => unsubscribe();
+  }, [router]);
 
   return (
     <div className="min-h-screen flex items-center justify-center">

@@ -18,6 +18,9 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Free.ai | Unlock Your Creativity with AI",
   description: "Experience the power of AI-driven creativity with Free.ai. Generate stunning images, craft compelling text, and explore endless possibilities with our cutting-edge AI tools.",
+  icons: {
+    icon: '/free.ai.png',
+  }
 };
 
 export default function RootLayout({

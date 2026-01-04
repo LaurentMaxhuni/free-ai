@@ -21,6 +21,7 @@
     "hooks": "@/hooks"
   },
   "registries": {
-    "@shadcndesign": "https://shadcndesign-free.vercel.app/r/{name}.json"
+    "@shadcndesign": "https://shadcndesign-free.vercel.app/r/{name}.json",
+    "@kokonutui": "https://kokonutui.com/r/{name}.json"
   }
 }
