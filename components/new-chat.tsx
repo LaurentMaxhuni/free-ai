@@ -1,11 +1,15 @@
 import React from 'react'
 import AI_Prompt from './kokonutui/ai-prompt'
 
-const NewChat = () => {
+type NewChatProps = {
+  onSend?: (value: string, model: string) => void;
+};
+
+const NewChat = ({ onSend }: NewChatProps) => {
   return (
     <div className='flex items-center justify-center h-full flex-col'>
       <h1 className='text-3xl font-bold'>What would you like to ask me?</h1>
-      <AI_Prompt />
+      <AI_Prompt onSend={onSend} />
     </div>
   )
 }

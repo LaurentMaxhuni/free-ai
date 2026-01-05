@@ -6,16 +6,32 @@ import { Button } from '@/components/ui/button'
 import { HugeiconsIcon } from '@hugeicons/react'
 import { PencilEdit02Icon, Search01FreeIcons } from '@hugeicons/core-free-icons'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from './ui/dropdown-menu';
-import { Avatar } from './ui/avatar';
+import { Avatar, AvatarImage } from './ui/avatar';
 import { ChevronUp, CreditCard, LogOut, User } from 'lucide-react';
+import { signOut } from 'firebase/auth';
+import { auth } from '@/lib/firebase';
+import { redirect, useRouter } from 'next/navigation';
+import { useAuth } from './auth-provider';
 
 const ChatSidebar = () => {
-  const [chats, setChats] = useState<string[]>([]);
 
-  const user = {
-    name: "John Doe",
-    subscription: "Free"
+  const router = useRouter();
+  const [chats, setChats] = useState<string[]>([]);
+  const { user, loading } = useAuth();
+
+  if (loading || !user) {
+    return null;
   }
+
+  const signOutButton = () => {
+    signOut(auth).then(() => {
+      console.log('Sign out succesful!');
+      router.push('/login');
+    }).catch((error) => {
+      console.log('Sign out failed!', error);
+    })
+  }
+
   return (
     <>
       <div className="fixed left-3 top-3 z-50 md:hidden">
@@ -72,24 +88,29 @@ const ChatSidebar = () => {
           <SidebarMenu className='w-full'>
             <SidebarMenuItem>
               <DropdownMenu>
-                <DropdownMenuTrigger asChild className='w-full'>
-                  <SidebarMenuButton className='w-full py-7 cursor-pointer justify-start group-data-[collapsible=icon]:p-1! group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:gap-0'>
-                    <Avatar className="group-data-[collapsible=icon]:size-6" />
-                    <div className="flex min-w-0 flex-col leading-tight group-data-[collapsible=icon]:hidden">
-                      <h1 className="truncate text-sm font-medium">{user.name}</h1>
-                      <p className="text-muted-foreground truncate text-xs">{user.subscription}</p>
-                    </div>
-                    <ChevronUp className='ml-auto group-data-[collapsible=icon]:hidden' />
-                  </SidebarMenuButton>
+                <DropdownMenuTrigger
+                  render={
+                    <SidebarMenuButton className='w-full py-7 cursor-pointer justify-start group-data-[collapsible=icon]:p-1! group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:gap-0' />
+                  }
+                >
+                  <Avatar className="group-data-[collapsible=icon]:size-6">
+                    <AvatarImage src={user.photoURL ?? undefined} />
+                  </Avatar>
+                  <div className="flex min-w-0 flex-col leading-tight group-data-[collapsible=icon]:hidden">
+                    <h1 className="truncate text-sm font-medium">{user.displayName}</h1>
+                    <p className="text-muted-foreground truncate text-xs">{user.email}</p>
+                  </div>
+                  <ChevronUp className='ml-auto group-data-[collapsible=icon]:hidden' />
                 </DropdownMenuTrigger>
-                <DropdownMenuContent side='top' align='center' className="w-full">
-                  <DropdownMenuItem>
+                <DropdownMenuContent side='top' align='center' className="w-[calc(var(--anchor-width))]"
+                >
+                  <DropdownMenuItem className="cursor-pointer">
                     <User /> Account
                   </DropdownMenuItem>
-                  <DropdownMenuItem>
+                  <DropdownMenuItem className="cursor-pointer">
                     <CreditCard /> Billing
                   </DropdownMenuItem>
-                  <DropdownMenuItem className="text-danger">
+                  <DropdownMenuItem className="text-destructive cursor-pointer" onClick={() => signOutButton()}>
                     <LogOut /> Sign Out
                   </DropdownMenuItem>
                 </DropdownMenuContent>

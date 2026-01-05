@@ -1,32 +1,30 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { GoogleAuthProvider, signInWithPopup, onAuthStateChanged } from "firebase/auth";
+import { GoogleAuthProvider, onAuthStateChanged, signInWithPopup } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 import { Logo } from "@/components/logo";
 
 import { useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { redirect, useRouter } from "next/navigation";
 import { BackgroundPattern } from "./background-pattern";
 
 const Login = () => {
   const router = useRouter();
+  const provider = new GoogleAuthProvider();
 
   const onLogin = async () => {
-    const provider = new GoogleAuthProvider();
-    await signInWithPopup(auth, provider);
+    await signInWithPopup(auth, provider).then((result) => {
+      if (result) redirect('/chat')
+    })
   };
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      if (!user) {
-        return;
-      }
-      router.push(`/chat`);
+    return onAuthStateChanged(auth, (user) => {
+      if (user) router.push("/chat");
     });
-
-    return () => unsubscribe();
   }, [router]);
+
 
   return (
     <div className="min-h-screen flex items-center justify-center">
@@ -87,7 +85,7 @@ const Login = () => {
             Log in to Free.ai
           </p>
 
-          <Button className="mt-8 w-full gap-3 hover:cursor-pointer" onClick={onLogin}>
+          <Button className="mt-8 w-full gap-3 hover:cursor-pointer" onClick={() => onLogin()}>
             <GoogleLogo />
             Continue with Google
           </Button>

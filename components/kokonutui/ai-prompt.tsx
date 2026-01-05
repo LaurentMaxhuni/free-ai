@@ -60,7 +60,7 @@ const OPENAI_SVG = (
   </div>
 );
 
-const LLAMA_SVG = (
+const QWEN_SVG = (
   <svg
     aria-label="Llama icon"
     className="h-4 w-4"
@@ -106,7 +106,7 @@ const LLAMA_SVG = (
   </svg>
 );
 
-const GROQ_SVG = (
+const LLAMA_SVG = (
   <svg
     aria-label="Groq icon"
     className="h-4 w-4"
@@ -311,7 +311,7 @@ const GROQ_SVG = (
   </svg>
 );
 
-const QWEN_SVG = (
+const GROQ_SVG = (
   <svg
     aria-label="Qwen icon"
     className="h-4 w-4"
@@ -326,7 +326,7 @@ const QWEN_SVG = (
   </svg>
 );
 
-const MODEL_ICONS: Record<string, JSX.Element> = {
+export const MODEL_ICONS: Record<string, JSX.Element> = {
   "GPT OSS 120B": OPENAI_SVG,
   "GPT OSS 20B": OPENAI_SVG,
   "Llama 4 Maverick 17B 128E": LLAMA_SVG,
@@ -334,7 +334,12 @@ const MODEL_ICONS: Record<string, JSX.Element> = {
   "Qwen3-32B": QWEN_SVG,
 };
 
-export default function AI_Prompt() {
+type AIPromptProps = {
+  onSend?: (value: string, model: string) => void;
+  containerClassName?: string;
+};
+
+export default function AI_Prompt({ onSend, containerClassName }: AIPromptProps) {
   const [value, setValue] = useState("");
   const { textareaRef, adjustHeight } = useAutoResizeTextarea({
     minHeight: 72,
@@ -342,16 +347,25 @@ export default function AI_Prompt() {
   });
   const [selectedModel, setSelectedModel] = useState(AI_MODELS[0]);
 
+  const handleSend = () => {
+    const trimmed = value.trim();
+    if (!trimmed) {
+      return;
+    }
+    onSend?.(trimmed, selectedModel);
+    setValue("");
+    adjustHeight(true);
+  };
+
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
-      setValue("");
-      adjustHeight(true);
+      handleSend();
     }
   };
 
   return (
-    <div className="w-3/6 py-4">
+    <div className={cn("w-3/6 py-4", containerClassName)}>
       <div className="rounded-2xl bg-black/5 p-1.5 dark:bg-white/5">
         <div className="relative">
           <div className="relative flex flex-col">
@@ -377,7 +391,7 @@ export default function AI_Prompt() {
               <div className="absolute right-3 bottom-3 left-3 flex w-[calc(100%-24px)] items-center justify-between">
                 <div className="flex items-center gap-2">
                   <DropdownMenu>
-                    <DropdownMenuTrigger render={<Button className="flex h-8 items-center gap-1 rounded-md pr-2 pl-1 text-xs hover:bg-black/10 focus-visible:ring-1 focus-visible:ring-blue-500 focus-visible:ring-offset-0 dark:text-white dark:hover:bg-white/10 cursor-pointer" variant="ghost" />}><AnimatePresence mode="wait">
+                    <DropdownMenuTrigger render={<Button className="flex h-8 items-center gap-1 rounded-md pr-2 pl-2 text-xs hover:bg-black/10 focus-visible:ring-1 focus-visible:ring-blue-500 focus-visible:ring-offset-0 dark:text-white dark:hover:bg-white/10 cursor-pointer" variant="ghost" />}><AnimatePresence mode="wait">
                                                                 <motion.div
                                                                   animate={{
                                                                     opacity: 1,
@@ -414,7 +428,7 @@ export default function AI_Prompt() {
                         <DropdownMenuItem
                           className="flex items-center justify-between gap-2 cursor-pointer"
                           key={model}
-                          onSelect={() => setSelectedModel(model)}
+                          onClick={() => setSelectedModel(model)}
                         >
                           <div className="flex items-center gap-2">
                             {MODEL_ICONS[model] ?? (
@@ -450,6 +464,7 @@ export default function AI_Prompt() {
                   )}
                   disabled={!value.trim()}
                   type="button"
+                  onClick={handleSend}
                 >
                   <ArrowRight
                     className={cn(
