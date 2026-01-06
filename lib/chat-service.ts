@@ -1,6 +1,14 @@
-import { StringToBoolean } from "class-variance-authority/types";
 import { db } from "./firebase";
-import { addDoc, collection, doc, onSnapshot, orderBy, query, serverTimestamp, updateDoc } from "firebase/firestore";
+import {
+  addDoc,
+  collection,
+  doc,
+  onSnapshot,
+  orderBy,
+  query,
+  serverTimestamp,
+  updateDoc,
+} from "firebase/firestore";
 
 export type ChatSummary = {
   id: string;
@@ -16,10 +24,11 @@ export type ChatMessage = {
   role: "user" | "assistant";
   content: string;
   createdAt?: unknown;
-}
+};
 
 const chatsRef = (uid: string) => collection(db, "users", uid, "chats");
-const messagesRef = (uid: string, chatId: string) => collection(db, "users", uid, "chats", chatId, "messages");
+const messagesRef = (uid: string, chatId: string) =>
+  collection(db, "users", uid, "chats", chatId, "messages");
 
 export async function createChat(uid: string, title: string, model?: string) {
   const ref = await addDoc(chatsRef(uid), {
@@ -33,7 +42,12 @@ export async function createChat(uid: string, title: string, model?: string) {
   return ref.id;
 }
 
-export async function addMessage(uid: string, chatId: string, role: ChatMessage["role"], content: string) {
+export async function addMessage(
+  uid: string,
+  chatId: string,
+  role: ChatMessage["role"],
+  content: string
+) {
   const messageNote = await addDoc(messagesRef(uid, chatId), {
     role,
     content,
@@ -48,7 +62,10 @@ export async function addMessage(uid: string, chatId: string, role: ChatMessage[
   return messageNote.id;
 }
 
-export function subscribeChats(uid: string, onChange: (chats: ChatSummary[]) => void) {
+export function subscribeChats(
+  uid: string,
+  onChange: (chats: ChatSummary[]) => void
+) {
   const qry = query(chatsRef(uid), orderBy("updatedAt", "desc"));
   return onSnapshot(qry, (snap) => {
     const data = snap.docs.map((docSnap) => ({
@@ -59,7 +76,11 @@ export function subscribeChats(uid: string, onChange: (chats: ChatSummary[]) => 
   });
 }
 
-export function subscribeMessages(uid: string, chatId: string, onChange: (messages: ChatMessage[]) => void) {
+export function subscribeMessages(
+  uid: string,
+  chatId: string,
+  onChange: (messages: ChatMessage[]) => void
+) {
   const qry = query(messagesRef(uid, chatId), orderBy("createdAt", "asc"));
   return onSnapshot(qry, (snap) => {
     const data = snap.docs.map((docSnap) => ({
@@ -67,5 +88,5 @@ export function subscribeMessages(uid: string, chatId: string, onChange: (messag
       ...(docSnap.data() as Omit<ChatMessage, "id">),
     }));
     onChange(data);
-  })
+  });
 }

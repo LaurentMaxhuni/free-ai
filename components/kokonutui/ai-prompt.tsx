@@ -23,13 +23,14 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { useAutoResizeTextarea } from "@/hooks/use-auto-resize-textarea";
 import { cn } from "@/lib/utils";
+import { useChat } from '@ai-sdk/react'
 
 const AI_MODELS = [
-  "GPT OSS 120B",
-  "GPT OSS 20B",
-  "Llama 4 Maverick 17B 128E",
-  "Groq Compound",
-  "Qwen3-32B",
+  { id: "openai/gpt-oss-120b", label: "GPT OSS 120B" },
+  { id: "openai/gpt-oss-20b", label: "GPT OSS 20B" },
+  { id: "meta-llama/llama-4-maverick-17b-128e-instruct", label: "Llama 4 Maverick 17B 128E" },
+  { id: "groq/compound", label: "Groq Compound" },
+  { id: "qwen/qwen3-32b", label: "Qwen3-32B" },
 ];
 
 const OPENAI_SVG = (
@@ -335,9 +336,14 @@ export const MODEL_ICONS: Record<string, JSX.Element> = {
 };
 
 type AIPromptProps = {
-  onSend?: (value: string, model: string) => void;
+  onSend?: (value: string, model: string, label: string) => void;
   containerClassName?: string;
 };
+
+type SelectedModel = {
+  id: string;
+  label: string;
+}
 
 export default function AI_Prompt({ onSend, containerClassName }: AIPromptProps) {
   const [value, setValue] = useState("");
@@ -345,14 +351,14 @@ export default function AI_Prompt({ onSend, containerClassName }: AIPromptProps)
     minHeight: 72,
     maxHeight: 300,
   });
-  const [selectedModel, setSelectedModel] = useState(AI_MODELS[0]);
+  const [selectedModel, setSelectedModel] = useState<SelectedModel>(AI_MODELS[0]);
 
   const handleSend = () => {
     const trimmed = value.trim();
     if (!trimmed) {
       return;
     }
-    onSend?.(trimmed, selectedModel);
+    onSend?.(trimmed, selectedModel.id, selectedModel.label);
     setValue("");
     adjustHeight(true);
   };
@@ -365,7 +371,7 @@ export default function AI_Prompt({ onSend, containerClassName }: AIPromptProps)
   };
 
   return (
-    <div className={cn("w-3/6 py-4", containerClassName)}>
+    <div className={cn("w-full py-4", containerClassName)}>
       <div className="rounded-2xl bg-black/5 p-1.5 dark:bg-white/5">
         <div className="relative">
           <div className="relative flex flex-col">
@@ -406,15 +412,15 @@ export default function AI_Prompt({ onSend, containerClassName }: AIPromptProps)
                                                                     opacity: 0,
                                                                     y: -5,
                                                                   }}
-                                                                  key={selectedModel}
+                                                                  key={selectedModel.id}
                                                                   transition={{
                                                                     duration: 0.15,
                                                                   }}
                                                                 >
-                                                                  {MODEL_ICONS[selectedModel] ?? (
+                                                                  {MODEL_ICONS[selectedModel.label] ?? (
                                                                     <Bot className="h-4 w-4 opacity-50" />
                                                                   )}
-                                                                  {selectedModel}
+                                                                  {selectedModel.label}
                                                                   <ChevronDown className="h-3 w-3 opacity-50" />
                                                                 </motion.div>
                                                               </AnimatePresence></DropdownMenuTrigger>
@@ -424,19 +430,19 @@ export default function AI_Prompt({ onSend, containerClassName }: AIPromptProps)
                         "border-black/10 dark:border-white/10",
                       )}
                     >
-                      {AI_MODELS.map((model) => (
+                      {AI_MODELS.map(({id, label}) => (
                         <DropdownMenuItem
                           className="flex items-center justify-between gap-2 cursor-pointer"
-                          key={model}
-                          onClick={() => setSelectedModel(model)}
+                          key={id}
+                          onClick={() => setSelectedModel({id, label})}
                         >
                           <div className="flex items-center gap-2">
-                            {MODEL_ICONS[model] ?? (
+                            {MODEL_ICONS[label] ?? (
                               <Bot className="h-4 w-4 opacity-50" />
                             )}
-                            <span>{model}</span>
+                            <span>{label}</span>
                           </div>
-                          {selectedModel === model && (
+                          {selectedModel.id === id && (
                             <Check className="h-4 w-4 text-blue-500" />
                           )}
                         </DropdownMenuItem>

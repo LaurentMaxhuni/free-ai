@@ -6,16 +6,20 @@ import NewChat from "@/components/new-chat";
 import { cn } from "@/lib/utils";
 import { Bot, Check, Copy } from "lucide-react";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
+import { useChat } from "@ai-sdk/react";
+import { DefaultChatTransport } from "ai";
+import { Button } from "@/components/ui/button";
 
-type Message = {
-  id: string;
-  role: "user" | "assistant";
-  content: string;
-  model?: string;
-};
+// type Message = {
+//   id: string;
+//   role: "user" | "assistant";
+//   content: string;
+//   model?: string;
+//   label?: string;
+// };
 
 const Chat = () => {
-  const [messages, setMessages] = useState<Message[]>([]);
+  // const [messages, setMessages] = useState<Message[]>([]);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement | null>(null);
   const chatId = crypto.randomUUID();
@@ -32,33 +36,54 @@ const Chat = () => {
     [query]
   );
 
-  
-  const handleSend = (input: string, model: string) => {
+  const { messages, sendMessage, status } = useChat({
+    transport: new DefaultChatTransport({
+      api: "/api/chat",
+    })
+  })
+
+  const handleSend = async (input: string, model: string, label: string) => {
     const text = input.trim();
-    if (!text) {
-      return;
-    }
+    if (!text) return;
 
-    const userMessage: Message = {
-      id: crypto.randomUUID(),
-      role: "user",
-      content: text,
-    };
-    const assistantMessage: Message = {
-      id: crypto.randomUUID(),
-      role: "assistant",
-      content: `Got it. Here's a stubbed response for: ${text}`,
-      model,
-    };
+    // const res = await fetch("/api/chat", {
+    //   method: "POST",
+    //   headers: { "Content-Type": "application/json" },
+    //   body: JSON.stringify({ model, prompt: text }),
+    // });
+    // const data = await res.json();
 
-    setMessages((prev) => [...prev, userMessage, assistantMessage]);
+    // const userMessage: Message = { id: crypto.randomUUID(), role: "user", content: text };
+    // const assistantMessage: Message = {
+    //   id: crypto.randomUUID(),
+    //   role: "assistant",
+    //   content: data.text,
+    //   model,
+    //   label,
+    // };
 
-    if (messages.length == 1) {
-      router.push(pathname + "?" + createQueryString("chatId", chatId));
-    }
+    // setMessages((prev) => [...prev, userMessage, assistantMessage]);
+
+    // sendMessage(
+    //   { role: "user", content: text },
+    //   { body: { model, label } }
+    // );
+
+
+    // sendMessage(
+    //   { role: "user", text: text },
+    //   { body: { model, label } }
+    // )
+
+    sendMessage(
+      { role: "user", parts: [{ type: "text", text }] },
+      { body: { model, label } }
+    );
+
+
   };
 
-  const handleCopy = async (message: Message) => {
+  const handleCopy = async (message) => {
     try {
       await navigator.clipboard.writeText(message.content);
       setCopiedId(message.id);
@@ -98,37 +123,42 @@ const Chat = () => {
                     : "bg-muted text-foreground"
                 )}
               >
+                {message.parts.map((part, index) => {
+                  if (part.type !== "text") return null;
+
+                  console.log(part.text)
+
+                  return <span key={index}>
+                    {part.text}
+                  </span>
+                })}
                 <div className="flex items-start gap-2">
-                  {message.role === "assistant" && message.model ? (
-                    <span className="mt-0.5 shrink-0 text-foreground/70">
-                      {MODEL_ICONS[message.model] ?? (
-                        <Bot className="h-4 w-4 opacity-60" />
-                      )}
-                    </span>
-                  ) : null}
-                  <div className="min-w-0 flex-1">{message.content}</div>
+                  {message.role === "assistant" && (<Button
+                    type="button"
+                    aria-label="Copy message"
+                    variant="secondary"
+                    onClick={() => handleCopy(message)}
+                    className={cn(
+                      "absolute -top-2 -right-2 rounded-full border bg-background p-1 text-foreground/70 opacity-0 shadow-sm transition group-hover:opacity-100"
+                    )}
+                  >
+                    {copiedId === message.id ? (
+                      <Check className="h-3 w-3" />
+                    ) : (
+                      <Copy className="h-3 w-3" />
+                    )}
+                  </Button>)}
                 </div>
-                <button
-                  type="button"
-                  aria-label="Copy message"
-                  onClick={() => handleCopy(message)}
-                  className={cn(
-                    "absolute -top-2 -right-2 rounded-full border bg-background p-1 text-foreground/70 opacity-0 shadow-sm transition group-hover:opacity-100"
-                  )}
-                >
-                  {copiedId === message.id ? (
-                    <Check className="h-3 w-3" />
-                  ) : (
-                    <Copy className="h-3 w-3" />
-                  )}
-                </button>
               </div>
             </div>
           ))}
+          {status === "streaming" && (
+            <div className="text-xs text-muted-foreground">Assistant is typing...</div>
+          )}
           <div ref={bottomRef} />
         </div>
       </div>
-      <div className="border-t border-border/50 bg-background/80 backdrop-blur-sm">
+      <div className="bg-background/80 backdrop-blur-sm">
         <div className="mx-auto w-full max-w-3xl px-6">
           <AI_Prompt onSend={handleSend} containerClassName="w-full py-4" />
         </div>
