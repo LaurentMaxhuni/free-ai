@@ -1,13 +1,7 @@
 import Login from "@/components/login"
-import { ModeToggle } from "@/components/ui/mode-toggle"
 
 const LoginPage = () => {
-  return (
-    <>
-      <Login />
-      <ModeToggle />
-    </>
-  )
+  return <Login />
 }
 
 export default LoginPage

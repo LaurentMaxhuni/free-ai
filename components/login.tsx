@@ -1,33 +1,51 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { GoogleAuthProvider, signInWithPopup, onAuthStateChanged } from "firebase/auth";
+import {
+  GoogleAuthProvider,
+  signInWithPopup,
+  onAuthStateChanged,
+} from "firebase/auth";
 import { auth } from "@/lib/firebase";
 import { Logo } from "@/components/logo";
-
-import { useEffect } from "react";
-import { useRouter } from "next/navigation";
 import { BackgroundPattern } from "./background-pattern";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 
 const Login = () => {
   const router = useRouter();
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!auth) return;
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (user) {
+        router.replace("/chat");
+      }
+    });
+    return () => unsubscribe();
+  }, [router]);
 
   const onLogin = async () => {
-    const provider = new GoogleAuthProvider();
-    await signInWithPopup(auth, provider);
+    if (!auth) {
+      setError("Authentication is not configured. Please contact support.");
+      return;
+    }
+    setLoading(true);
+    setError(null);
+    try {
+      const provider = new GoogleAuthProvider();
+      await signInWithPopup(auth, provider);
+      router.replace("/chat");
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "Failed to sign in with Google";
+      setError(message);
+    } finally {
+      setLoading(false);
+    }
   };
-
-  // useEffect(() => {
-  //   const unsubscribe = onAuthStateChanged(auth, (user) => {
-  //     if (!user) {
-  //       return;
-  //     }
-  //     router.push(`/chat?uid=${user.uid}`);
-  //   });
-
-  //   return () => unsubscribe();
-  // }, [router]);
-
 
   return (
     <div className="min-h-screen flex items-center justify-center">
@@ -87,11 +105,35 @@ const Login = () => {
           <p className="mt-4 text-xl font-semibold tracking-tight">
             Log in to Free.ai
           </p>
+          <p className="mt-1 text-sm text-muted-foreground text-center">
+            Sign in to chat and generate for free.
+          </p>
 
-          <Button className="mt-8 w-full gap-3 hover:cursor-pointer" onClick={onLogin}>
+          <Button
+            type="button"
+            className="mt-8 w-full gap-3 cursor-pointer"
+            onClick={onLogin}
+            disabled={loading}
+            aria-busy={loading}
+          >
             <GoogleLogo />
-            Continue with Google
+            {loading ? "Signing in..." : "Continue with Google"}
           </Button>
+
+          {error ? (
+            <p
+              role="alert"
+              className="mt-4 text-sm text-destructive text-center"
+            >
+              {error}
+            </p>
+          ) : null}
+
+          <p className="mt-6 text-xs text-muted-foreground text-center">
+            By continuing you agree to our{" "}
+            <span className="underline">Terms</span> and{" "}
+            <span className="underline">Privacy Policy</span>.
+          </p>
         </div>
       </div>
     </div>
@@ -107,6 +149,7 @@ const GoogleLogo = () => (
     fill="none"
     xmlns="http://www.w3.org/2000/svg"
     className="inline-block shrink-0 align-sub text-inherit size-lg"
+    aria-hidden
   >
     <g clipPath="url(#clip0)">
       <path

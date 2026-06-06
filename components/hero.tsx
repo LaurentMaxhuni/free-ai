@@ -1,6 +1,6 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ArrowUpRight, CirclePlay } from "lucide-react";
+import { ArrowUpRight } from "lucide-react";
 import { BackgroundPattern } from "@/components/background-pattern";
 import Link from "next/link";
 
@@ -10,7 +10,7 @@ export default function Hero() {
       <BackgroundPattern />
 
       <div className="relative z-10 text-center max-w-3xl">
-        <Badge variant="secondary" className="rounded-full py-1 border-border" render={<Link href="#" />}>Completely free. No Limits. Login Now. <ArrowUpRight className="ml-1 size-4" /></Badge>
+        <Badge variant="secondary" className="rounded-full py-1 border-border" render={<Link href="/login" />}>Completely free. No Limits. Login Now. <ArrowUpRight className="ml-1 size-4" /></Badge>
         <h1 className="mt-6 text-4xl sm:text-5xl md:text-6xl lg:text-7xl md:leading-[1.2] font-semibold tracking-tighter">
           Welcome to the place where the sky&apos;s the limit.
         </h1>

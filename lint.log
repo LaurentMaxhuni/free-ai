@@ -1,0 +1,13 @@
+﻿powershell : $ eslint
+At line:1 char:1
++ powershell -ExecutionPolicy Bypass -Command "pnpm lint 2>&1" 2>&1 | O ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: ($ eslint:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+
+C:\github-repos\free-ai\components\cta.tsx
+  2:10  warning  'Input' is defined but never used  @typescript-eslint/no-unused-vars
+
+Γ£û 1 problem (0 errors, 1 warning)
+

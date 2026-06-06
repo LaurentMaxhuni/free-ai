@@ -1,0 +1,11 @@
+import { CtaBlock } from "@/components/cta";
+
+const Page = () => {
+  return (
+    <>
+      <CtaBlock />
+    </>
+  );
+};
+
+export default Page;

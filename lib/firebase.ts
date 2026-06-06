@@ -1,12 +1,6 @@
-// Import the functions you need from the SDKs you need
-import { initializeApp } from "firebase/app";
-import { getAuth } from "firebase/auth";
-// import { getAnalytics } from "firebase/analytics";
-// TODO: Add SDKs for Firebase products that you want to use
-// https://firebase.google.com/docs/web/setup#available-libraries
+import { getApps, initializeApp, type FirebaseApp } from "firebase/app";
+import { getAuth, type Auth } from "firebase/auth";
 
-// Your web app's Firebase configuration
-// For Firebase JS SDK v7.20.0 and later, measurementId is optional
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
   authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
@@ -17,7 +11,24 @@ const firebaseConfig = {
   measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID,
 };
 
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
+let cachedApp: FirebaseApp | null = null;
+let cachedAuth: Auth | null = null;
 
-export const auth = getAuth(app);
+function getFirebaseAuth(): Auth | null {
+  if (typeof window === "undefined") return null;
+  if (!firebaseConfig.apiKey) {
+    console.warn(
+      "Firebase API key is not configured. Set NEXT_PUBLIC_FIREBASE_* in your .env.local.",
+    );
+    return null;
+  }
+  if (!cachedApp) {
+    cachedApp = getApps()[0] ?? initializeApp(firebaseConfig);
+  }
+  if (!cachedAuth) {
+    cachedAuth = getAuth(cachedApp);
+  }
+  return cachedAuth;
+};
+
+export const auth: Auth | null = getFirebaseAuth();

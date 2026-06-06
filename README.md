@@ -1,36 +1,102 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Free.ai
 
-## Getting Started
+A free, multi-provider AI chat app — text and image generation, with Firebase auth and per-user API key storage.
 
-First, run the development server:
+## Stack
+
+- Next.js 16 (App Router, Turbopack)
+- React 19
+- Firebase Auth + Firestore
+- Base UI, Tailwind v4, shadcn-style components
+- Lucide / Hugeicons
+
+## Providers
+
+| Provider | Text | Image | Key required | Model list |
+|---|---|---|---|---|
+| Pollinations.ai | yes | yes | no | static |
+| Puter | yes | no | no | static |
+| Ollama (local) | yes | no | no (set base URL) | dynamic (fetched from `/api/tags`) |
+| Groq | yes | no | yes | static |
+| OpenRouter | yes | no | yes | dynamic (`:free` models from public endpoint, cached 1h) |
+| Hugging Face | no | yes | yes | static |
+
+The default is Pollinations, which works with no key. To use a different provider, sign in, open Settings → API Keys, paste a key, then switch to that provider in Settings → Models.
+
+**Ollama** runs locally. Start it with CORS enabled so the browser can fetch your model list:
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+OLLAMA_ORIGINS=* ollama serve
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Then paste `http://localhost:11434` (or your remote URL) into Settings → API Keys → Ollama base URL. The model dropdown pulls whatever you have pulled locally.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+**OpenRouter** has a long list of free models (`:free` suffix). The Models tab fetches them from `https://openrouter.ai/api/v1/models`, filters to free ones, and caches the result in `localStorage` for an hour. Use the Refresh button to bypass the cache.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+**Puter** needs no setup — it's a free public service. Useful for trying the app before adding a key.
 
-## Learn More
+## Getting started
 
-To learn more about Next.js, take a look at the following resources:
+```bash
+pnpm install
+cp .env.example .env.local   # fill in values
+pnpm dev
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Environment variables
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### Client (exposed to the browser — safe values only)
 
-## Deploy on Vercel
+```
+NEXT_PUBLIC_FIREBASE_API_KEY=
+NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=
+NEXT_PUBLIC_FIREBASE_PROJECT_ID=
+NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=
+NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=
+NEXT_PUBLIC_FIREBASE_APP_ID=
+NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID=
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Get these from the Firebase Console → Project Settings → Your apps → Web app config.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+### Server (never committed)
+
+```
+FIREBASE_PROJECT_ID=
+FIREBASE_CLIENT_EMAIL=
+FIREBASE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n"
+```
+
+Get these from the Firebase Console → Project Settings → Service Accounts → **Generate new private key**. Use the values from the downloaded JSON.
+
+On Vercel: paste `FIREBASE_PRIVATE_KEY` with literal `\n` in the value field — the server code replaces them with real newlines at runtime.
+
+## Firestore setup
+
+1. In the Firebase Console, enable **Firestore Database** (Native mode).
+2. Go to Firestore → Rules, paste the contents of [`firestore.rules`](./firestore.rules), and publish.
+
+The rules deny client reads of user documents, so API keys are only ever read by the Next.js server using the Admin SDK. The client can write its own document but never read it back.
+
+## Ollama (local)
+
+To use Ollama from the browser, allow CORS for your dev origin:
+
+```bash
+OLLAMA_ORIGINS='http://localhost:3000' ollama serve
+```
+
+Then pull a model:
+
+```bash
+ollama pull llama3.2
+```
+
+## Scripts
+
+```bash
+pnpm dev      # dev server
+pnpm build    # production build
+pnpm start    # serve production build
+pnpm lint     # eslint
+```

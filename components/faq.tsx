@@ -43,7 +43,7 @@ const FAQ = () => {
         </h2>
       </div>
 
-      <Accordion type="single" defaultValue="question-0" className="max-w-xl flex-1">
+      <Accordion defaultValue={["question-0"]} className="max-w-xl flex-1">
         {faq.map(({ question, answer }, index) => (
         <AccordionItem key={question} value={`question-${index}`}>
           <AccordionTrigger className="text-left text-lg">
