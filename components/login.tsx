@@ -3,7 +3,8 @@
 import { Button } from "@/components/ui/button"
 import {
   GoogleAuthProvider,
-  signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
   onAuthStateChanged,
 } from "firebase/auth"
 import { auth } from "@/lib/firebase"
@@ -18,6 +19,17 @@ const Login = () => {
 
   useEffect(() => {
     if (!auth) return
+
+    getRedirectResult(auth).then((result) => {
+      if (result) {
+        router.replace("/chat")
+      }
+    }).catch((err) => {
+      if (err?.code !== "auth/credential-already-in-use" && err?.code !== "auth/web-storage-unsupported") {
+        setError(err instanceof Error ? err.message : "Sign in failed")
+      }
+    })
+
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       if (user) {
         router.replace("/chat")
@@ -29,16 +41,7 @@ const Login = () => {
   const onLogin = () => {
     if (!auth) return
     const provider = new GoogleAuthProvider()
-    signInWithPopup(auth, provider)
-      .then(() => router.replace("/chat"))
-      .catch((err) => {
-        if (err?.code === "auth/popup-blocked") {
-          setError("Pop-up blocked. Allow pop-ups for this site and try again.")
-        } else if (err?.code === "auth/popup-closed-by-user") {
-        } else {
-          setError(err instanceof Error ? err.message : "Sign in failed")
-        }
-      })
+    signInWithRedirect(auth, provider)
   }
 
   return (
