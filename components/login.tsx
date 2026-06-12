@@ -1,46 +1,45 @@
-"use client";
+"use client"
 
-import { Button } from "@/components/ui/button";
+import { Button } from "@/components/ui/button"
 import {
   GoogleAuthProvider,
-  signInWithRedirect,
-  getRedirectResult,
+  signInWithPopup,
   onAuthStateChanged,
-} from "firebase/auth";
-import { auth } from "@/lib/firebase";
-import { Logo } from "@/components/logo";
-import { BackgroundPattern } from "./background-pattern";
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+} from "firebase/auth"
+import { auth } from "@/lib/firebase"
+import { Logo } from "@/components/logo"
+import { BackgroundPattern } from "./background-pattern"
+import { useEffect, useState } from "react"
+import { useRouter } from "next/navigation"
 
 const Login = () => {
-  const router = useRouter();
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const router = useRouter()
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    if (!auth) return;
-    getRedirectResult(auth).catch((err) => {
-      const message =
-        err instanceof Error ? err.message : "Failed to sign in with Google";
-      setError(message);
-    });
+    if (!auth) return
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       if (user) {
-        router.replace("/chat");
+        router.replace("/chat")
       }
-    });
-    return () => unsubscribe();
-  }, [router]);
+    })
+    return () => unsubscribe()
+  }, [router])
 
   const onLogin = () => {
-    if (!auth) {
-      setError("Authentication is not configured. Please contact support.");
-      return;
-    }
-    const provider = new GoogleAuthProvider();
-    signInWithRedirect(auth, provider);
-  };
+    if (!auth) return
+    const provider = new GoogleAuthProvider()
+    signInWithPopup(auth, provider)
+      .then(() => router.replace("/chat"))
+      .catch((err) => {
+        if (err?.code === "auth/popup-blocked") {
+          setError("Pop-up blocked. Allow pop-ups for this site and try again.")
+        } else if (err?.code === "auth/popup-closed-by-user") {
+        } else {
+          setError(err instanceof Error ? err.message : "Sign in failed")
+        }
+      })
+  }
 
   return (
     <div className="min-h-dvh flex items-center justify-center">
@@ -108,11 +107,9 @@ const Login = () => {
             type="button"
             className="mt-8 w-full gap-3 cursor-pointer"
             onClick={onLogin}
-            disabled={loading}
-            aria-busy={loading}
           >
             <GoogleLogo />
-            {loading ? "Signing in..." : "Continue with Google"}
+            Continue with Google
           </Button>
 
           {error ? (
@@ -132,8 +129,8 @@ const Login = () => {
         </div>
       </div>
     </div>
-  );
-};
+  )
+}
 
 const GoogleLogo = () => (
   <svg
@@ -170,6 +167,6 @@ const GoogleLogo = () => (
       </clipPath>
     </defs>
   </svg>
-);
+)
 
-export default Login;
+export default Login
