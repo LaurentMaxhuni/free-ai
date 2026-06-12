@@ -3,7 +3,8 @@
 import { Button } from "@/components/ui/button";
 import {
   GoogleAuthProvider,
-  signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
   onAuthStateChanged,
 } from "firebase/auth";
 import { auth } from "@/lib/firebase";
@@ -19,6 +20,11 @@ const Login = () => {
 
   useEffect(() => {
     if (!auth) return;
+    getRedirectResult(auth).catch((err) => {
+      const message =
+        err instanceof Error ? err.message : "Failed to sign in with Google";
+      setError(message);
+    });
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       if (user) {
         router.replace("/chat");
@@ -27,24 +33,13 @@ const Login = () => {
     return () => unsubscribe();
   }, [router]);
 
-  const onLogin = async () => {
+  const onLogin = () => {
     if (!auth) {
       setError("Authentication is not configured. Please contact support.");
       return;
     }
-    setLoading(true);
-    setError(null);
-    try {
-      const provider = new GoogleAuthProvider();
-      await signInWithPopup(auth, provider);
-      router.replace("/chat");
-    } catch (err) {
-      const message =
-        err instanceof Error ? err.message : "Failed to sign in with Google";
-      setError(message);
-    } finally {
-      setLoading(false);
-    }
+    const provider = new GoogleAuthProvider();
+    signInWithRedirect(auth, provider);
   };
 
   return (
