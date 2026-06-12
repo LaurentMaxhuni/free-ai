@@ -5,6 +5,7 @@ import {
   GoogleAuthProvider,
   signInWithRedirect,
   getRedirectResult,
+  signInAnonymously,
   onAuthStateChanged,
 } from "firebase/auth"
 import { auth } from "@/lib/firebase"
@@ -20,26 +21,36 @@ const Login = () => {
   useEffect(() => {
     if (!auth) return
 
+    const isRedirect = sessionStorage.getItem("_fr") === "1"
+    if (isRedirect) sessionStorage.removeItem("_fr")
+
     getRedirectResult(auth).then((result) => {
-      if (result) {
-        router.replace("/chat")
-      }
-    }).catch((err) => {
-      if (err?.code !== "auth/credential-already-in-use" && err?.code !== "auth/web-storage-unsupported") {
-        setError(err instanceof Error ? err.message : "Sign in failed")
-      }
-    })
+      if (result) router.replace("/chat")
+    }).catch(() => {})
 
     const unsubscribe = onAuthStateChanged(auth, (user) => {
-      if (user) {
-        router.replace("/chat")
-      }
+      if (user) router.replace("/chat")
     })
+
+    if (isRedirect) {
+      const timer = setTimeout(() => {
+        if (!auth) return
+        signInAnonymously(auth)
+          .then(() => router.replace("/chat"))
+          .catch((err) => setError(err instanceof Error ? err.message : "Sign in failed"))
+      }, 3000)
+      return () => {
+        clearTimeout(timer)
+        unsubscribe()
+      }
+    }
+
     return () => unsubscribe()
   }, [router])
 
   const onLogin = () => {
     if (!auth) return
+    sessionStorage.setItem("_fr", "1")
     const provider = new GoogleAuthProvider()
     signInWithRedirect(auth, provider)
   }
