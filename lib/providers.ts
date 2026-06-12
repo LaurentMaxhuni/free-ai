@@ -14,6 +14,8 @@ export type ModelOption = {
 export type DynamicModelSource =
   | { kind: "ollama" }
   | { kind: "openrouter-free" }
+  | { kind: "groq" }
+  | { kind: "huggingface" }
 
 export type Provider = {
   id: ProviderId
@@ -33,10 +35,14 @@ export type Provider = {
   textModels: ModelOption[]
   imageModels: ModelOption[]
   /**
-   * If set, the client fetches the model list at runtime instead of using the
+   * If set, the client fetches text models at runtime instead of using the
    * static arrays above. `kind` tells the UI which fetcher to call.
    */
   dynamicModels?: DynamicModelSource
+  /**
+   * Same as `dynamicModels` but for image models.
+   */
+  dynamicImageModels?: DynamicModelSource
 }
 
 export const PROVIDERS: Record<ProviderId, Provider> = {
@@ -97,12 +103,9 @@ export const PROVIDERS: Record<ProviderId, Provider> = {
     requiresKey: true,
     keyPlaceholder: "gsk_...",
     keyHelpUrl: "https://console.groq.com/keys",
-    textModels: [
-      { id: "llama-3.3-70b-versatile", label: "Llama 3.3 70B" },
-      { id: "llama-3.1-8b-instant", label: "Llama 3.1 8B (fastest)" },
-      { id: "mixtral-8x7b-32768", label: "Mixtral 8x7B" },
-    ],
+    textModels: [],
     imageModels: [],
+    dynamicModels: { kind: "groq" },
   },
 
   openrouter: {
@@ -130,11 +133,8 @@ export const PROVIDERS: Record<ProviderId, Provider> = {
     keyPlaceholder: "hf_...",
     keyHelpUrl: "https://huggingface.co/settings/tokens",
     textModels: [],
-    imageModels: [
-      { id: "black-forest-labs/FLUX.1-schnell", label: "FLUX.1 Schnell (fast)" },
-      { id: "stabilityai/stable-diffusion-xl-base-1.0", label: "SDXL" },
-      { id: "runwayml/stable-diffusion-v1-5", label: "SD 1.5" },
-    ],
+    imageModels: [],
+    dynamicImageModels: { kind: "huggingface" },
   },
 }
 

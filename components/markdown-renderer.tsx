@@ -44,7 +44,7 @@ function CodeBlock({ language, children }: CodeBlockProps) {
   }, [isPreviewable, lang, children])
 
   return (
-    <div className="group/code relative my-3 rounded-xl border bg-muted/80 overflow-hidden">
+    <div className="group/code relative my-3 rounded-full border bg-muted/80 overflow-hidden">
       <div className="flex items-center justify-between px-4 py-2 border-b border-border bg-muted/50">
         <div className="flex items-center gap-2">
           <span className="text-xs text-muted-foreground font-mono">

@@ -11,7 +11,7 @@ const textSuggestions = [
   "Explain quantum computing in simple terms",
   "Write a short story about a time traveler",
   "Help me draft a professional email",
-  "What are good habits for learning a new language?",
+  "Tell me some tips for learning a new language",
 ]
 
 const imageSuggestions = [
@@ -46,7 +46,7 @@ export function ChatEmpty({ onSuggestion }: Props) {
                 key={suggestion}
                 type="button"
                 onClick={() => onSuggestion(suggestion, "text")}
-                className="p-4 rounded-xl border bg-card/50 text-sm text-left hover:bg-muted/60 hover:border-foreground/20 transition-colors cursor-pointer"
+                className="p-4 rounded-full border bg-card/50 text-sm text-left hover:bg-muted/60 hover:border-foreground/20 transition-colors cursor-pointer"
               >
                 {suggestion}
               </button>
@@ -65,7 +65,7 @@ export function ChatEmpty({ onSuggestion }: Props) {
                 key={suggestion}
                 type="button"
                 onClick={() => onSuggestion(suggestion, "image")}
-                className="p-4 rounded-xl border bg-card/50 text-sm text-left hover:bg-muted/60 hover:border-foreground/20 transition-colors cursor-pointer"
+                className="p-4 rounded-full border bg-card/50 text-sm text-left hover:bg-muted/60 hover:border-foreground/20 transition-colors cursor-pointer"
               >
                 {suggestion}
               </button>

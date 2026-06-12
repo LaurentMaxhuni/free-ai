@@ -173,7 +173,7 @@ export function ChatSidebar({ currentChatId, onSelect, onNewChat, onClose }: Pro
                   }
                 }}
                 className={cn(
-                  "group flex items-center gap-2 px-3 py-2 rounded-xl text-sm cursor-pointer transition-colors",
+                  "group flex items-center gap-2 px-3 py-2 rounded-full text-sm cursor-pointer transition-colors",
                   isActive
                     ? "bg-muted text-foreground"
                     : "text-muted-foreground hover:bg-muted/60 hover:text-foreground"

@@ -107,7 +107,7 @@ export function ChatInput({
           disabled={disabled}
           aria-label="Chat message"
           role="textbox"
-          className="w-full bg-transparent border-0 outline-none resize-none px-5 py-3.5 pr-14 text-sm placeholder:text-muted-foreground"
+          className="w-full bg-transparent border-0 outline-none resize-none px-5 py-3.5 pr-14 text-sm placeholder:text-muted-foreground flex rounded-full"
           style={{ maxHeight: MAX_HEIGHT }}
         />
         {isGenerating ? (

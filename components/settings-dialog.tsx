@@ -31,6 +31,8 @@ import {
 } from "@/lib/keys-api"
 import { fetchOllamaModels } from "@/lib/ollama-models"
 import { fetchOpenRouterFreeModels } from "@/lib/openrouter-models"
+import { fetchGroqModels } from "@/lib/groq-models"
+import { fetchHuggingFaceModels } from "@/lib/huggingface-models"
 import {
   AlertDialog,
   AlertDialogContent,
@@ -55,11 +57,17 @@ function ModelsTab({ configured }: { configured: ConfiguredProvider[] | null }) 
 
   const configuredForProvider = configured?.find((c) => c.provider === settings.provider) ?? null
   const isDynamicText = Boolean(provider.dynamicModels)
+  const isDynamicImage = Boolean(provider.dynamicImageModels)
 
   const [textModels, setTextModels] = useState<ModelOption[] | null>(
     isDynamicText ? null : provider.textModels
   )
   const [textState, setTextState] = useState<ModelLoadState>({ kind: "idle" })
+
+  const [imageModels, setImageModels] = useState<ModelOption[] | null>(
+    isDynamicImage ? null : provider.imageModels
+  )
+  const [imageState, setImageState] = useState<ModelLoadState>({ kind: "idle" })
 
   const loadDynamic = useCallback(
     async (force = false) => {
@@ -76,6 +84,10 @@ function ModelsTab({ configured }: { configured: ConfiguredProvider[] | null }) 
           const models = await fetchOpenRouterFreeModels({ force })
           setTextModels(models)
           setTextState({ kind: "ready", models })
+        } else if (provider.dynamicModels.kind === "groq") {
+          const models = await fetchGroqModels({ force })
+          setTextModels(models)
+          setTextState({ kind: "ready", models })
         } else {
           setTextModels(provider.textModels)
           setTextState({ kind: "ready", models: provider.textModels })
@@ -88,16 +100,46 @@ function ModelsTab({ configured }: { configured: ConfiguredProvider[] | null }) 
     [provider, configuredForProvider]
   )
 
+  const loadDynamicImageModels = useCallback(
+    async (force = false) => {
+      if (!provider.dynamicImageModels) return
+      setImageState({ kind: "loading" })
+      setImageModels(null)
+      try {
+        if (provider.dynamicImageModels.kind === "huggingface") {
+          const models = await fetchHuggingFaceModels({ force })
+          setImageModels(models)
+          setImageState({ kind: "ready", models })
+        } else {
+          setImageModels(provider.imageModels)
+          setImageState({ kind: "ready", models: provider.imageModels })
+        }
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "Failed to load image models"
+        setImageState({ kind: "error", message })
+      }
+    },
+    [provider]
+  )
+
   // Initial load + reload when provider changes (only for dynamic providers)
   useEffect(() => {
     if (isDynamicText) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       void loadDynamic(false)
     } else {
       setTextModels(provider.textModels)
       setTextState({ kind: "ready", models: provider.textModels })
     }
   }, [settings.provider, isDynamicText, loadDynamic, provider])
+
+  useEffect(() => {
+    if (isDynamicImage) {
+      void loadDynamicImageModels(false)
+    } else {
+      setImageModels(provider.imageModels)
+      setImageState({ kind: "ready", models: provider.imageModels })
+    }
+  }, [settings.provider, isDynamicImage, loadDynamicImageModels, provider])
 
   const setField = <K extends keyof Settings>(key: K, value: Settings[K]) => {
     const next = { ...settings, [key]: value }
@@ -170,6 +212,10 @@ function ModelsTab({ configured }: { configured: ConfiguredProvider[] | null }) 
                 <p className="mt-1 text-muted-foreground">
                   Check the Ollama URL in <span className="font-medium">API Keys</span>.
                 </p>
+              ) : provider.dynamicModels?.kind === "groq" ? (
+                <p className="mt-1 text-muted-foreground">
+                  Make sure your Groq API key is set in <span className="font-medium">API Keys</span>.
+                </p>
               ) : null}
             </div>
           ) : null}
@@ -201,26 +247,56 @@ function ModelsTab({ configured }: { configured: ConfiguredProvider[] | null }) 
         </div>
       ) : null}
 
-      {isImageCapable && provider.imageModels.length > 0 ? (
+      {isImageCapable ? (
         <div className="space-y-1.5">
-          <Label htmlFor="image-model">Image model</Label>
+          <div className="flex items-center justify-between">
+            <Label htmlFor="image-model">Image model</Label>
+            {isDynamicImage ? (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => loadDynamicImageModels(true)}
+                disabled={imageState.kind === "loading"}
+                className="h-6 px-2 text-xs"
+              >
+                {imageState.kind === "loading" ? (
+                  <Loader2 className="size-3 animate-spin" />
+                ) : (
+                  <RotateCcw className="size-3" />
+                )}
+                Refresh
+              </Button>
+            ) : null}
+          </div>
+          {isDynamicImage && imageState.kind === "error" ? (
+            <div className="rounded-md border border-destructive/30 bg-destructive/5 p-3 text-xs text-destructive">
+              <p>{imageState.message}</p>
+            </div>
+          ) : null}
           <Select
             value={settings.imageModel}
             onValueChange={(value) => {
               if (value) setField("imageModel", value)
             }}
+            disabled={!imageModels || imageModels.length === 0}
           >
             <SelectTrigger id="image-model" variant="form">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              {provider.imageModels.map((m) => (
+              {imageModels?.map((m) => (
                 <SelectItem key={m.id} value={m.id}>
                   {m.label}
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
+          {isDynamicImage ? (
+            <p className="text-xs text-muted-foreground">
+              Pulled from the Hugging Face model catalog.
+            </p>
+          ) : null}
         </div>
       ) : null}
 
@@ -292,7 +368,7 @@ function ProviderKeyCard({
   const hasUrl = Boolean(configured.baseUrl)
 
   return (
-    <div className="rounded-xl border p-4 space-y-3">
+    <div className="rounded-3xl border p-4 space-y-3">
       <div className="flex items-center justify-between gap-2">
         <div>
           <p className="text-sm font-medium">{provider.name}</p>
@@ -309,7 +385,7 @@ function ProviderKeyCard({
             </span>
           ) : null}
           {hasUrl ? (
-            <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-muted-foreground">
+            <span className="inline-flex items-center gap-1 rounded-full bg-muted px-3 py-1 text-muted-foreground">
               URL overridden
             </span>
           ) : null}

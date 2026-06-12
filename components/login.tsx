@@ -34,7 +34,7 @@ const Login = () => {
     <div className="min-h-dvh flex items-center justify-center">
       <BackgroundPattern />
 
-      <div className="relative max-w-sm w-full border rounded-xl px-8 py-8 shadow-lg/5 dark:shadow-xl bg-linear-to-b from-muted/50 dark:from-transparent to-card overflow-hidden z-20">
+      <div className="relative max-w-sm w-full border rounded-3xl px-8 py-8 shadow-lg/5 dark:shadow-xl bg-linear-to-b from-muted/50 dark:from-transparent to-card overflow-hidden z-20">
         <div
           className="absolute inset-0 z-0 -top-px -left-px"
           style={{
