@@ -3,15 +3,13 @@
 import { Button } from "@/components/ui/button"
 import {
   GoogleAuthProvider,
-  signInWithRedirect,
-  getRedirectResult,
-  signInAnonymously,
+  signInWithPopup,
   onAuthStateChanged,
 } from "firebase/auth"
 import { auth } from "@/lib/firebase"
 import { Logo } from "@/components/logo"
 import { BackgroundPattern } from "./background-pattern"
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 
 const Login = () => {
@@ -20,40 +18,26 @@ const Login = () => {
 
   useEffect(() => {
     if (!auth) return
-
-    const isRedirect = sessionStorage.getItem("_fr") === "1"
-    if (isRedirect) sessionStorage.removeItem("_fr")
-
-    getRedirectResult(auth).then((result) => {
-      if (result) router.replace("/chat")
-    }).catch(() => {})
-
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       if (user) router.replace("/chat")
     })
-
-    if (isRedirect) {
-      const timer = setTimeout(() => {
-        if (!auth) return
-        signInAnonymously(auth)
-          .then(() => router.replace("/chat"))
-          .catch((err) => setError(err instanceof Error ? err.message : "Sign in failed"))
-      }, 3000)
-      return () => {
-        clearTimeout(timer)
-        unsubscribe()
-      }
-    }
-
     return () => unsubscribe()
   }, [router])
 
-  const onLogin = () => {
-    if (!auth) return
-    sessionStorage.setItem("_fr", "1")
+  const onLogin = useCallback(() => {
+    const fbAuth = auth
+    if (!fbAuth) return
     const provider = new GoogleAuthProvider()
-    signInWithRedirect(auth, provider)
-  }
+    signInWithPopup(fbAuth, provider)
+      .then(() => router.replace("/chat"))
+      .catch((err) => {
+        if (err?.code === "auth/popup-blocked") {
+          setError("Pop-up blocked. Click the pop-up icon in the address bar, allow pop-ups, then try again.")
+        } else if (err?.code !== "auth/popup-closed-by-user") {
+          setError(err instanceof Error ? err.message : "Sign in failed")
+        }
+      })
+  }, [router])
 
   return (
     <div className="min-h-dvh flex items-center justify-center">
@@ -171,7 +155,7 @@ const GoogleLogo = () => (
         fill="#FBBC04"
       ></path>
       <path
-        d="M7.99812 3.16589C9.13867 3.14825 10.241 3.57743 11.067 4.36523L13.3511 2.0812C11.9048 0.723121 9.98526 -0.0235266 7.99812 -1.02057e-05C4.97332 -1.02057e-05 2.2072 1.70493 0.849121 4.40932L3.50648 6.46995C4.13848 4.57394 5.91104 3.16589 7.99812 3.16589Z"
+        d="M7.99812 3.16589C9.13867 3.14825 10.241 3.57743 11.067 4.36523L13.3511 2.0812C11.9048 0.723121 9.98526 -0.0235266 7.99812 -1.02057e-05C4.97332 -1.02057e-05 2.2071 1.70493 0.849121 4.40932L3.50648 6.46995C4.13848 4.57394 5.91104 3.16589 7.99812 3.16589Z"
         fill="#EA4335"
       ></path>
     </g>
