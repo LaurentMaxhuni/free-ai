@@ -11,8 +11,10 @@ import {
   deleteChat,
   deriveTitle,
   getAllChats,
+  onChatsChange,
   setActiveChatId,
 } from "@/lib/chat-storage"
+import { removeChat } from "@/lib/chat-sync"
 import { Logo } from "@/components/logo"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
@@ -51,6 +53,11 @@ export function ChatSidebar({ currentChatId, onSelect, onNewChat, onClose }: Pro
   }, [currentChatId])
 
   useEffect(() => {
+    const unsub = onChatsChange(() => setChats(getAllChats()))
+    return unsub
+  }, [])
+
+  useEffect(() => {
     if (!auth) return
     const unsubscribe = onAuthStateChanged(auth, (current) => {
       if (!current) {
@@ -83,6 +90,7 @@ export function ChatSidebar({ currentChatId, onSelect, onNewChat, onClose }: Pro
 
   const confirmDelete = () => {
     if (!deleteConfirmId) return
+    removeChat(deleteConfirmId)
     deleteChat(deleteConfirmId)
     setChats(getAllChats())
     if (deleteConfirmId === currentChatId) {

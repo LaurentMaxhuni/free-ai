@@ -22,6 +22,7 @@ import {
   deriveTitle,
   getActiveChatId,
   getChat,
+  onChatsChange,
   setActiveChatId,
   upsertChat,
 } from "@/lib/chat-storage"
@@ -30,6 +31,8 @@ import {
   buildImageMessage,
   generateTextStream,
 } from "@/lib/ai"
+import { startChatSync, syncChat } from "@/lib/chat-sync"
+import { auth } from "@/lib/firebase"
 
 function ChatViewInner() {
   const [activeChat, setActiveChat] = useState<Chat | null>(null)
@@ -38,6 +41,21 @@ function ChatViewInner() {
   const [hydrated, setHydrated] = useState(false)
   const [streamingContent, setStreamingContent] = useState("")
   const abortRef = useRef<AbortController | null>(null)
+
+  useEffect(() => {
+    startChatSync(auth)
+  }, [])
+
+  useEffect(() => {
+    const unsub = onChatsChange(() => {
+      const id = getActiveChatId()
+      if (id) {
+        const chat = getChat(id)
+        if (chat) setActiveChat(chat)
+      }
+    })
+    return unsub
+  }, [])
 
   useEffect(() => {
     const id = getActiveChatId()
@@ -100,6 +118,7 @@ function ChatViewInner() {
       chat.updatedAt = Date.now()
       setActiveChat(chat)
       upsertChat(chat)
+      syncChat(chat)
       setActiveChatId(chat.id)
 
       const controller = new AbortController()
@@ -117,6 +136,7 @@ function ChatViewInner() {
           }
           setActiveChat(updated)
           upsertChat(updated)
+          syncChat(updated)
         } else {
           const apiMessages = chat.messages
             .filter((m) => m.role !== "system")
@@ -141,12 +161,13 @@ function ChatViewInner() {
                   messages: [...prev.messages, assistantMessage],
                   updatedAt: Date.now(),
                 }
-                upsertChat(updated)
-                return updated
-              })
-              setStreamingContent("")
-            },
-            onError: (error) => {
+                  upsertChat(updated)
+                  syncChat(updated)
+                  return updated
+                })
+                setStreamingContent("")
+              },
+              onError: (error) => {
               throw error
             },
           })
@@ -168,6 +189,7 @@ function ChatViewInner() {
             updatedAt: Date.now(),
           }
           upsertChat(updated)
+          syncChat(updated)
           return updated
         })
         setStreamingContent("")

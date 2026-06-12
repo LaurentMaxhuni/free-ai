@@ -147,8 +147,35 @@ export async function generateText(
   return result
 }
 
+function hashString(input: string): number {
+  let hash = 0
+  for (let i = 0; i < input.length; i++) {
+    hash = (hash << 5) - hash + input.charCodeAt(i)
+    hash |= 0
+  }
+  return Math.abs(hash)
+}
+
+function buildPollinationsUrl(prompt: string): string {
+  const seed = hashString(prompt.trim().toLowerCase())
+  const params = new URLSearchParams({
+    width: "1024",
+    height: "1024",
+    nologo: "true",
+    enhance: "true",
+    seed: String(seed),
+  })
+  return `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt.trim())}?${params.toString()}`
+}
+
 export async function buildImageMessage(prompt: string): Promise<ChatMessage> {
   const settings = getSettings()
+
+  if (settings.provider === "pollinations") {
+    const url = buildPollinationsUrl(prompt)
+    return { role: "assistant", content: `${IMAGE_PREFIX}${url}` }
+  }
+
   const token = await getIdToken()
   const response = await fetch("/api/image", {
     method: "POST",

@@ -1,5 +1,6 @@
 import { getApps, initializeApp, type FirebaseApp } from "firebase/app";
 import { getAuth, type Auth } from "firebase/auth";
+import { getFirestore, type Firestore } from "firebase/firestore";
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -13,6 +14,19 @@ const firebaseConfig = {
 
 let cachedApp: FirebaseApp | null = null;
 let cachedAuth: Auth | null = null;
+let cachedFirestore: Firestore | null = null;
+
+export function getFirestoreDB(): Firestore | null {
+  if (typeof window === "undefined") return null;
+  if (!firebaseConfig.apiKey) return null;
+  if (!cachedApp) {
+    cachedApp = getApps()[0] ?? initializeApp(firebaseConfig);
+  }
+  if (!cachedFirestore) {
+    cachedFirestore = getFirestore(cachedApp);
+  }
+  return cachedFirestore;
+}
 
 function getFirebaseAuth(): Auth | null {
   if (typeof window === "undefined") return null;

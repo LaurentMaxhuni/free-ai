@@ -13,6 +13,17 @@ const CHATS_KEY = "free-ai:chats"
 const ACTIVE_CHAT_KEY = "free-ai:active-chat"
 const MAX_CHATS = 100
 
+const changeListeners = new Set<() => void>()
+
+export function onChatsChange(cb: () => void): () => void {
+  changeListeners.add(cb)
+  return () => { changeListeners.delete(cb) }
+}
+
+function notifyChange() {
+  changeListeners.forEach(cb => cb())
+}
+
 function isClient(): boolean {
   return typeof window !== "undefined"
 }
@@ -50,6 +61,7 @@ function saveChats(chats: Chat[]): void {
   } catch {
     /* storage may be full or disabled */
   }
+  notifyChange()
 }
 
 export function getChat(id: string): Chat | null {

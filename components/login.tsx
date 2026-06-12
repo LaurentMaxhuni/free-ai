@@ -9,12 +9,11 @@ import {
 import { auth } from "@/lib/firebase"
 import { Logo } from "@/components/logo"
 import { BackgroundPattern } from "./background-pattern"
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect } from "react"
 import { useRouter } from "next/navigation"
 
 const Login = () => {
   const router = useRouter()
-  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     if (!auth) return
@@ -28,16 +27,8 @@ const Login = () => {
     const fbAuth = auth
     if (!fbAuth) return
     const provider = new GoogleAuthProvider()
-    signInWithPopup(fbAuth, provider)
-      .then(() => router.replace("/chat"))
-      .catch((err) => {
-        if (err?.code === "auth/popup-blocked") {
-          setError("Pop-up blocked. Click the pop-up icon in the address bar, allow pop-ups, then try again.")
-        } else if (err?.code !== "auth/popup-closed-by-user") {
-          setError(err instanceof Error ? err.message : "Sign in failed")
-        }
-      })
-  }, [router])
+    signInWithPopup(fbAuth, provider).catch(() => {})
+  }, [])
 
   return (
     <div className="min-h-dvh flex items-center justify-center">
@@ -109,15 +100,6 @@ const Login = () => {
             <GoogleLogo />
             Continue with Google
           </Button>
-
-          {error ? (
-            <p
-              role="alert"
-              className="mt-4 text-sm text-destructive text-center"
-            >
-              {error}
-            </p>
-          ) : null}
 
           <p className="mt-6 text-xs text-muted-foreground text-center">
             By continuing you agree to our{" "}
