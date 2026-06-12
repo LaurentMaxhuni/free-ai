@@ -53,6 +53,16 @@ export function Marquee({
         className
       )}
     >
+      <style>{`
+  @keyframes marquee {
+    from { transform: translateX(0); }
+    to { transform: translateX(-100%); }
+  }
+  @keyframes marquee-vertical {
+    from { transform: translateY(0); }
+    to { transform: translateY(-100%); }
+  }
+`}</style>
       {Array(repeat)
         .fill(0)
         .map((_, i) => (

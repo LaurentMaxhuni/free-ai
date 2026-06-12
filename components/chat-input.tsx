@@ -65,13 +65,15 @@ export function ChatInput({
         <button
           type="button"
           onClick={() => setMode("text")}
+          disabled={disabled || isGenerating}
           className={cn(
-            "flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full transition-colors cursor-pointer",
+            "flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full transition-colors cursor-pointer active:scale-[0.97]",
             mode === "text"
               ? "bg-foreground text-background"
               : "text-muted-foreground hover:text-foreground"
           )}
           aria-pressed={mode === "text"}
+          aria-label="Chat mode"
         >
           <MessageSquare className="size-3.5" />
           Chat
@@ -79,13 +81,15 @@ export function ChatInput({
         <button
           type="button"
           onClick={() => setMode("image")}
+          disabled={disabled || isGenerating}
           className={cn(
-            "flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full transition-colors cursor-pointer",
+            "flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full transition-colors cursor-pointer active:scale-[0.97]",
             mode === "image"
               ? "bg-foreground text-background"
               : "text-muted-foreground hover:text-foreground"
           )}
           aria-pressed={mode === "image"}
+          aria-label="Image mode"
         >
           <ImageIcon className="size-3.5" />
           Image
@@ -101,6 +105,8 @@ export function ChatInput({
           placeholder={placeholder}
           rows={1}
           disabled={disabled}
+          aria-label="Chat message"
+          role="textbox"
           className="w-full bg-transparent border-0 outline-none resize-none px-5 py-3.5 pr-14 text-sm placeholder:text-muted-foreground"
           style={{ maxHeight: MAX_HEIGHT }}
         />

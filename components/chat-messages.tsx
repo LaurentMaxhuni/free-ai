@@ -29,7 +29,7 @@ function CopyButton({ content }: { content: string }) {
     <button
       type="button"
       onClick={handleCopy}
-      className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-foreground"
+      className="opacity-60 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-foreground cursor-pointer"
       aria-label={copied ? "Copied" : "Copy message"}
     >
       {copied ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
@@ -38,12 +38,13 @@ function CopyButton({ content }: { content: string }) {
 }
 
 function ImageBubble({ url }: { url: string }) {
-  const [error, setError] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   if (error) {
     return (
-      <div className="rounded-2xl border bg-muted px-4 py-8 text-sm text-muted-foreground max-w-md">
-        Image failed to load.
+      <div className="rounded-2xl border bg-muted px-4 py-6 text-sm max-w-md">
+        <p className="text-destructive font-medium mb-1">Image failed to load</p>
+        <p className="text-muted-foreground text-xs break-words">{error}</p>
       </div>
     )
   }
@@ -56,7 +57,7 @@ function ImageBubble({ url }: { url: string }) {
         alt="AI generated"
         className="w-full h-auto block"
         loading="lazy"
-        onError={() => setError(true)}
+        onError={() => setError(url.startsWith("data:") ? "The image data could not be rendered." : "Failed to load from external source.")}
       />
     </div>
   )
@@ -75,7 +76,7 @@ function MessageBubble({ message, isStreaming }: { message: ChatMessage; isStrea
         <div className="text-sm leading-relaxed break-words prose prose-sm dark:prose-invert prose-p:my-1 prose-pre:my-2 prose-ul:my-1 prose-ol:my-1 prose-li:my-0 max-w-none">
           <MarkdownRenderer content={message.content} />
           {isStreaming && (
-            <span className="inline-block w-2 h-4 ml-0.5 bg-foreground/60 animate-pulse rounded-sm align-text-bottom" />
+            <span className="inline-block w-2 h-4 ml-0.5 bg-foreground/60 animate-pulse motion-reduce:animate-none rounded-sm align-text-bottom" />
           )}
         </div>
       </div>
@@ -93,17 +94,17 @@ function MessageBubble({ message, isStreaming }: { message: ChatMessage; isStrea
 
 function TypingIndicator() {
   return (
-    <div className="flex items-center gap-1.5 px-4 py-3 rounded-2xl bg-muted/60 w-fit">
+    <div className="flex items-center gap-1.5 px-4 py-3 rounded-2xl bg-muted/60 w-fit" role="status" aria-label="AI is typing">
       <span
-        className="size-2 rounded-full bg-foreground/40 animate-bounce"
+        className="size-2 rounded-full bg-foreground/40 animate-bounce motion-reduce:animate-none"
         style={{ animationDelay: "0ms" }}
       />
       <span
-        className="size-2 rounded-full bg-foreground/40 animate-bounce"
+        className="size-2 rounded-full bg-foreground/40 animate-bounce motion-reduce:animate-none"
         style={{ animationDelay: "150ms" }}
       />
       <span
-        className="size-2 rounded-full bg-foreground/40 animate-bounce"
+        className="size-2 rounded-full bg-foreground/40 animate-bounce motion-reduce:animate-none"
         style={{ animationDelay: "300ms" }}
       />
     </div>
@@ -186,7 +187,7 @@ export function ChatMessages({ messages, isGenerating, streamingContent }: Props
             <div className="rounded-2xl bg-muted/60 px-4 py-2.5 max-w-2xl">
               <div className="text-sm leading-relaxed break-words prose prose-sm dark:prose-invert prose-p:my-1 prose-pre:my-2 prose-ul:my-1 prose-ol:my-1 prose-li:my-0 max-w-none">
                 <MarkdownRenderer content={streamingContent} />
-                <span className="inline-block w-2 h-4 ml-0.5 bg-foreground/60 animate-pulse rounded-sm align-text-bottom" />
+                <span className="inline-block w-2 h-4 ml-0.5 bg-foreground/60 animate-pulse motion-reduce:animate-none rounded-sm align-text-bottom" />
               </div>
             </div>
           </div>
@@ -197,7 +198,7 @@ export function ChatMessages({ messages, isGenerating, streamingContent }: Props
             className="shrink-0 size-8 rounded-full bg-muted text-primary flex items-center justify-center"
             aria-hidden
           >
-            <Sparkles className="size-4 animate-pulse" />
+            <Sparkles className="size-4 animate-pulse motion-reduce:animate-none" />
           </div>
           <div className="flex flex-col min-w-0">
             <div className="text-xs text-muted-foreground mb-1 px-1">Free.ai</div>

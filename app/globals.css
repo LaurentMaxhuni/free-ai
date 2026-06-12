@@ -3,6 +3,7 @@
 @import "shadcn/tailwind.css";
 
 @custom-variant dark (&:is(.dark *));
+@custom-variant motion-reduce (@media (prefers-reduced-motion: reduce));
 
 @theme inline {
   --color-background: var(--background);
@@ -22,6 +23,8 @@
   --color-chart-3: var(--chart-3);
   --color-chart-2: var(--chart-2);
   --color-chart-1: var(--chart-1);
+  --color-brand: var(--brand);
+  --color-brand-foreground: var(--brand-foreground);
   --color-ring: var(--ring);
   --color-input: var(--input);
   --color-border: var(--border);
@@ -66,6 +69,8 @@
   --border: oklch(0.928 0.006 264.531);
   --input: oklch(0.928 0.006 264.531);
   --ring: oklch(0.707 0.022 261.325);
+  --brand: oklch(0.59 0.14 242);
+  --brand-foreground: oklch(0.98 0.01 237);
   --chart-1: oklch(0.83 0.10 230);
   --chart-2: oklch(0.75 0.14 233);
   --chart-3: oklch(0.68 0.15 237);
@@ -80,6 +85,15 @@
   --sidebar-accent-foreground: oklch(0.21 0.034 264.665);
   --sidebar-border: oklch(0.928 0.006 264.531);
   --sidebar-ring: oklch(0.707 0.022 261.325);
+
+  /* Brand accent (primary blue) and simple variants */
+  --brand-accent-hex: #349ff8;
+  --brand-accent-r: 52;
+  --brand-accent-g: 159;
+  --brand-accent-b: 248;
+  --brand-accent-100: #349ff8;
+  --brand-accent-30: rgba(52, 159, 248, 0.3);
+  --brand-accent-10: rgba(52, 159, 248, 0.1);
 }
 
 .dark {
@@ -101,6 +115,8 @@
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
   --ring: oklch(0.551 0.027 264.364);
+  --brand: oklch(0.68 0.15 237);
+  --brand-foreground: oklch(0.13 0.028 261.692);
   --chart-1: oklch(0.83 0.10 230);
   --chart-2: oklch(0.75 0.14 233);
   --chart-3: oklch(0.68 0.15 237);
@@ -114,6 +130,15 @@
   --sidebar-accent-foreground: oklch(0.985 0.002 247.839);
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.551 0.027 264.364);
+
+  /* Brand accent (dark mode) — keep same hue but slightly brighter */
+  --brand-accent-hex: #4fb8ff;
+  --brand-accent-r: 79;
+  --brand-accent-g: 184;
+  --brand-accent-b: 255;
+  --brand-accent-100: #4fb8ff;
+  --brand-accent-30: rgba(79, 184, 255, 0.3);
+  --brand-accent-10: rgba(79, 184, 255, 0.1);
 }
 
 @layer base {
@@ -122,5 +147,14 @@
   }
   body {
     @apply bg-background text-foreground font-sans;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }

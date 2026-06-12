@@ -23,7 +23,7 @@ export function AuthGuard({ children }: { children: ReactNode }) {
 
   if (!authorized) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
+      <div className="min-h-dvh flex items-center justify-center bg-background">
         <div
           aria-label="Loading"
           className="size-8 rounded-full border-2 border-muted-foreground/30 border-t-primary animate-spin"

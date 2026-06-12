@@ -31,6 +31,15 @@ import {
 } from "@/lib/keys-api"
 import { fetchOllamaModels } from "@/lib/ollama-models"
 import { fetchOpenRouterFreeModels } from "@/lib/openrouter-models"
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogAction,
+  AlertDialogCancel,
+} from "@/components/ui/alert-dialog"
 
 type ModelLoadState =
   | { kind: "idle" }
@@ -236,6 +245,7 @@ function ProviderKeyCard({
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [saved, setSaved] = useState(false)
+  const [clearConfirmOpen, setClearConfirmOpen] = useState(false)
 
   const canBaseUrl = provider.id === "ollama" || provider.id === "pollinations"
 
@@ -261,6 +271,11 @@ function ProviderKeyCard({
   }
 
   const onClear = async () => {
+    setClearConfirmOpen(true)
+  }
+
+  const confirmClear = async () => {
+    setClearConfirmOpen(false)
     setBusy(true)
     setError(null)
     try {
@@ -332,7 +347,6 @@ function ProviderKeyCard({
               onClick={() => setShowKey((s) => !s)}
               className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground cursor-pointer"
               aria-label={showKey ? "Hide key" : "Show key"}
-              tabIndex={-1}
             >
               {showKey ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
             </button>
@@ -391,6 +405,25 @@ function ProviderKeyCard({
           {saved ? "Saved" : "Save"}
         </Button>
       </div>
+
+      <AlertDialog open={clearConfirmOpen} onOpenChange={setClearConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Clear API key?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will remove the stored API key and base URL for {provider.name}. You&apos;ll need to enter them again to use this provider.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="flex justify-end gap-2">
+            <AlertDialogCancel onClick={() => setClearConfirmOpen(false)}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction onClick={confirmClear} className="bg-destructive text-destructive-foreground hover:bg-destructive/80">
+              Clear
+            </AlertDialogAction>
+          </div>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

@@ -16,6 +16,15 @@ import {
 import { Logo } from "@/components/logo"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogAction,
+  AlertDialogCancel,
+} from "@/components/ui/alert-dialog"
 
 type Props = {
   currentChatId: string | null
@@ -35,6 +44,7 @@ export function ChatSidebar({ currentChatId, onSelect, onNewChat, onClose }: Pro
   const [chats, setChats] = useState<Chat[]>([])
   const [user, setUser] = useState<UserSummary | null>(null)
   const [busy, setBusy] = useState(false)
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null)
 
   useEffect(() => {
     setChats(getAllChats())
@@ -68,11 +78,17 @@ export function ChatSidebar({ currentChatId, onSelect, onNewChat, onClose }: Pro
 
   const handleDelete = (id: string, event: MouseEvent) => {
     event.stopPropagation()
-    deleteChat(id)
+    setDeleteConfirmId(id)
+  }
+
+  const confirmDelete = () => {
+    if (!deleteConfirmId) return
+    deleteChat(deleteConfirmId)
     setChats(getAllChats())
-    if (id === currentChatId) {
+    if (deleteConfirmId === currentChatId) {
       handleNew()
     }
+    setDeleteConfirmId(null)
   }
 
   const handleSignOut = async () => {
@@ -164,7 +180,7 @@ export function ChatSidebar({ currentChatId, onSelect, onNewChat, onClose }: Pro
                 <button
                   type="button"
                   onClick={(event) => handleDelete(chat.id, event)}
-                  className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive"
+                  className="opacity-40 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive cursor-pointer"
                   aria-label="Delete chat"
                 >
                   <Trash2 className="size-4" />
@@ -210,6 +226,25 @@ export function ChatSidebar({ currentChatId, onSelect, onNewChat, onClose }: Pro
           </Button>
         </div>
       ) : null}
+
+      <AlertDialog open={deleteConfirmId !== null} onOpenChange={(open) => !open && setDeleteConfirmId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete chat?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. The chat history will be permanently removed.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="flex justify-end gap-2">
+            <AlertDialogCancel onClick={() => setDeleteConfirmId(null)}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/80">
+              Delete
+            </AlertDialogAction>
+          </div>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

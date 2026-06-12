@@ -9,7 +9,7 @@ export const Logo = ({
       className={cn("text-2xl font-semibold tracking-tight", className)}
       {...props}
     >
-      free.<span className="text-sky-500">ai</span>
+      free.<span className="text-primary">ai</span>
     </span>
   );
 };

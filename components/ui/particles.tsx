@@ -101,6 +101,9 @@ const Particles: React.FC<ParticlesProps> = ({
   const canvasSize = useRef<{ w: number; h: number }>({ w: 0, h: 0 });
   const animationFrame = useRef<number | null>(null);
   const animateRef = useRef<() => void>(() => {});
+  const prefersReducedMotion = typeof window !== "undefined"
+    ? window.matchMedia("(prefers-reduced-motion: reduce)").matches
+    : false;
   const dpr = typeof window !== "undefined" ? window.devicePixelRatio : 1;
   const mousePosition = useMousePosition();
   const rgb = hexToRgb(color);
@@ -244,7 +247,10 @@ const Particles: React.FC<ParticlesProps> = ({
       context.current = canvasRef.current.getContext("2d");
     }
     initCanvas();
-    animationFrame.current = window.requestAnimationFrame(animateRef.current);
+
+    if (!prefersReducedMotion) {
+      animationFrame.current = window.requestAnimationFrame(animateRef.current);
+    }
 
     const handleResize = () => initCanvas();
     window.addEventListener("resize", handleResize);
@@ -255,7 +261,7 @@ const Particles: React.FC<ParticlesProps> = ({
         window.cancelAnimationFrame(animationFrame.current);
       }
     };
-  }, [color, initCanvas]);
+  }, [color, initCanvas, prefersReducedMotion]);
 
   useEffect(() => {
     if (canvasRef.current) {

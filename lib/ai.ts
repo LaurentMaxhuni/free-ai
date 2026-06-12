@@ -167,10 +167,16 @@ export async function buildImageMessage(prompt: string): Promise<ChatMessage> {
     const message = typeof data?.error === "string" ? data.error : `Request failed (${response.status})`
     throw new ApiError(message, response.status)
   }
-  const data = await response.json() as { dataUrl?: string; url?: string }
-  const value = data.dataUrl ?? data.url
-  if (!value) {
-    throw new ApiError("Provider returned no image", 502)
+  const data = await response.json() as { dataUrl?: string; error?: string }
+
+  if (data.error) {
+    throw new ApiError(data.error, 502)
   }
-  return { role: "assistant", content: `${IMAGE_PREFIX}${value}` }
+
+  if (!data.dataUrl) {
+    const text = JSON.stringify(data).slice(0, 300)
+    throw new ApiError(`Provider returned no image. Response: ${text}`, 502)
+  }
+
+  return { role: "assistant", content: `${IMAGE_PREFIX}${data.dataUrl}` }
 }

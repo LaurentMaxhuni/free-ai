@@ -6,7 +6,7 @@ import Link from "next/link";
 
 export default function Hero() {
   return (
-    <div className="min-h-screen flex items-center justify-center px-6">
+    <div className="min-h-dvh flex items-center justify-center px-6">
       <BackgroundPattern />
 
       <div className="relative z-10 text-center max-w-3xl">

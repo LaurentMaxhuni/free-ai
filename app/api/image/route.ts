@@ -70,7 +70,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ dataUrl })
     }
     const url = buildPollinationsUrl(prompt)
-    return NextResponse.json({ url })
+    const dataUrl = await callPollinations(url)
+    return NextResponse.json({ dataUrl })
   } catch (err) {
     const message = err instanceof Error ? err.message : "Provider request failed"
     return errorResponse(message, 502)
@@ -86,7 +87,33 @@ function buildPollinationsUrl(prompt: string): string {
     enhance: "true",
     seed: String(seed),
   })
-  return `https://gen.pollinations.ai/image/${encodeURIComponent(prompt.trim())}?${params.toString()}`
+  return `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt.trim())}?${params.toString()}`
+}
+
+async function callPollinations(url: string): Promise<string> {
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), 30_000)
+
+  try {
+    const res = await fetch(url, {
+      signal: controller.signal,
+      headers: { Accept: "image/*" },
+    })
+    if (!res.ok) {
+      const text = await res.text().catch(() => "")
+      throw new Error(`Pollinations error (${res.status}): ${text.slice(0, 200)}`)
+    }
+    const blob = await res.blob()
+    if (blob.type.startsWith("text/") || blob.size < 100) {
+      const text = await blob.text()
+      throw new Error(`Pollinations returned non-image: ${text.slice(0, 200)}`)
+    }
+    const buffer = await blob.arrayBuffer()
+    const base64 = Buffer.from(buffer).toString("base64")
+    return `data:${blob.type || "image/png"};base64,${base64}`
+  } finally {
+    clearTimeout(timeout)
+  }
 }
 
 async function callHuggingFace(

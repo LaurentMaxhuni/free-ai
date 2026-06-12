@@ -1,0 +1,87 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <defs>
+    <style><![CDATA[
+      :root {
+        --brand-accent-100: #349ff8;
+        --brand-accent-30: rgba(52, 159, 248, 0.3);
+        --brand-accent-10: rgba(52, 159, 248, 0.1);
+        --ai-text-end: #818cf8;
+      }
+    ]]></style>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0f0f11"/>
+      <stop offset="50%" stop-color="#1a1a2e"/>
+      <stop offset="100%" stop-color="#0f0f11"/>
+    </linearGradient>
+    <linearGradient id="glow" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="var(--brand-accent-100)" stop-opacity="0.3"/>
+      <stop offset="100%" stop-color="#8b5cf6" stop-opacity="0.1"/>
+    </linearGradient>
+    <linearGradient id="ai-text" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="var(--brand-accent-100)"/>
+      <stop offset="100%" stop-color="var(--ai-text-end)"/>
+    </linearGradient>
+    <linearGradient id="accent-line" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="var(--brand-accent-100)"/>
+      <stop offset="100%" stop-color="var(--ai-text-end)"/>
+    </linearGradient>
+    <filter id="soft-glow">
+      <feGaussianBlur stdDeviation="60" result="blur"/>
+      <feComposite in="SourceGraphic" in2="blur" operator="over"/>
+    </filter>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1200" height="630" fill="url(#bg)"/>
+
+  <!-- Subtle grid pattern -->
+  <g opacity="0.03">
+    <line x1="0" y1="0" x2="1200" y2="0" stroke="white" stroke-width="0.5"/>
+    <line x1="0" y1="90" x2="1200" y2="90" stroke="white" stroke-width="0.5"/>
+    <line x1="0" y1="180" x2="1200" y2="180" stroke="white" stroke-width="0.5"/>
+    <line x1="0" y1="270" x2="1200" y2="270" stroke="white" stroke-width="0.5"/>
+    <line x1="0" y1="360" x2="1200" y2="360" stroke="white" stroke-width="0.5"/>
+    <line x1="0" y1="450" x2="1200" y2="450" stroke="white" stroke-width="0.5"/>
+    <line x1="0" y1="540" x2="1200" y2="540" stroke="white" stroke-width="0.5"/>
+    <line x1="0" y1="630" x2="1200" y2="630" stroke="white" stroke-width="0.5"/>
+    <line x1="0" y1="0" x2="0" y2="630" stroke="white" stroke-width="0.5"/>
+    <line x1="200" y1="0" x2="200" y2="630" stroke="white" stroke-width="0.5"/>
+    <line x1="400" y1="0" x2="400" y2="630" stroke="white" stroke-width="0.5"/>
+    <line x1="600" y1="0" x2="600" y2="630" stroke="white" stroke-width="0.5"/>
+    <line x1="800" y1="0" x2="800" y2="630" stroke="white" stroke-width="0.5"/>
+    <line x1="1000" y1="0" x2="1000" y2="630" stroke="white" stroke-width="0.5"/>
+    <line x1="1200" y1="0" x2="1200" y2="630" stroke="white" stroke-width="0.5"/>
+  </g>
+
+  <!-- Glow orbs -->
+  <circle cx="200" cy="315" r="250" fill="url(#glow)"/>
+  <circle cx="1000" cy="315" r="200" fill="url(#glow)"/>
+
+  <!-- Content -->
+  <g transform="translate(600, 280)">
+
+    <!-- Logo text: free.ai -->
+    <text text-anchor="middle" font-family="'Segoe UI', 'SF Pro Display', -apple-system, sans-serif" font-size="88" font-weight="700" letter-spacing="-8">
+      <tspan fill="#f1f5f9">free.</tspan>
+      <tspan fill="url(#ai-text)">ai</tspan>
+    </text>
+
+    <!-- Accent line -->
+    <rect x="-60" y="50" width="120" height="4" rx="2" fill="url(#accent-line)"/>
+
+    <!-- Tagline -->
+    <text text-anchor="middle" y="95" font-family="'Segoe UI', 'SF Pro Display', -apple-system, sans-serif" font-size="28" fill="#94a3b8" font-weight="400" letter-spacing="0.5">
+      Unlock Your Creativity with AI
+    </text>
+
+    <!-- Subtitle -->
+    <text text-anchor="middle" y="130" font-family="'Segoe UI', 'SF Pro Display', -apple-system, sans-serif" font-size="16" fill="#64748b" font-weight="400" letter-spacing="1">
+      Free AI Tools — Generate, Create, Inspire
+    </text>
+  </g>
+
+  <!-- Bottom corner URL -->
+  <text x="1150" y="600" text-anchor="end" font-family="'Segoe UI', sans-serif" font-size="14" fill="#64748b" opacity="0.6">
+    free-ai-lm.vercel.app
+  </text>
+</svg>

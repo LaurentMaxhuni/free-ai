@@ -155,10 +155,10 @@ function ChatViewInner() {
         if ((error as Error).name === "AbortError") {
           return
         }
+        const detail = error instanceof Error ? error.message : "Please try again."
         const errorMessage = {
           role: "assistant" as const,
-          content:
-            "Sorry, something went wrong while generating a response. Please try again.",
+          content: `Error: ${detail}`,
         }
         setActiveChat((prev) => {
           if (!prev) return prev
@@ -205,7 +205,7 @@ function ChatViewInner() {
       : activeChat?.title ?? "New chat"
 
   return (
-    <div className="h-screen flex bg-background overflow-hidden">
+    <div className="h-dvh flex bg-background overflow-hidden">
       <aside className="hidden md:flex w-72 border-r shrink-0 flex-col">
         {sidebar}
       </aside>

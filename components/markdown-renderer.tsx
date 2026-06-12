@@ -44,10 +44,10 @@ function CodeBlock({ language, children }: CodeBlockProps) {
   }, [isPreviewable, lang, children])
 
   return (
-    <div className="group/code relative my-3 rounded-xl border bg-zinc-950 dark:bg-zinc-900 overflow-hidden">
-      <div className="flex items-center justify-between px-4 py-2 border-b border-zinc-800 bg-zinc-900/50 dark:bg-zinc-800/50">
+    <div className="group/code relative my-3 rounded-xl border bg-muted/80 overflow-hidden">
+      <div className="flex items-center justify-between px-4 py-2 border-b border-border bg-muted/50">
         <div className="flex items-center gap-2">
-          <span className="text-xs text-zinc-400 font-mono">
+          <span className="text-xs text-muted-foreground font-mono">
             {lang || "code"}
           </span>
         </div>
@@ -56,7 +56,7 @@ function CodeBlock({ language, children }: CodeBlockProps) {
             <button
               type="button"
               onClick={() => setShowPreview((v) => !v)}
-              className="flex items-center gap-1 text-xs px-2 py-1 rounded-md text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800 transition-colors cursor-pointer"
+              className="flex items-center gap-1 text-xs px-2 py-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
               aria-label={showPreview ? "Show code" : "Show preview"}
             >
               {showPreview ? <Code className="size-3" /> : <Eye className="size-3" />}
@@ -66,7 +66,7 @@ function CodeBlock({ language, children }: CodeBlockProps) {
           <button
             type="button"
             onClick={() => setExpanded((v) => !v)}
-            className="text-xs px-1.5 py-1 rounded-md text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800 transition-colors cursor-pointer"
+            className="text-xs px-1.5 py-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
             aria-label={expanded ? "Collapse" : "Expand"}
           >
             {expanded ? <Minimize2 className="size-3" /> : <Maximize2 className="size-3" />}
@@ -74,7 +74,7 @@ function CodeBlock({ language, children }: CodeBlockProps) {
           <button
             type="button"
             onClick={handleCopy}
-            className="flex items-center gap-1 text-xs px-2 py-1 rounded-md text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800 transition-colors cursor-pointer"
+            className="flex items-center gap-1 text-xs px-2 py-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
             aria-label={copied ? "Copied" : "Copy code"}
           >
             {copied ? <Check className="size-3" /> : <Copy className="size-3" />}
@@ -124,9 +124,9 @@ function CodePreview({
     if (type === "js") {
       return `<!DOCTYPE html>
 <html><head><style>
-body { font-family: monospace; padding: 16px; background: #1e1e1e; color: #d4d4d4; }
+body { font-family: monospace; padding: 16px; background: Canvas; color: CanvasText; }
 #output { white-space: pre-wrap; }
-.log { color: #d4d4d4; }
+.log { color: CanvasText; }
 .error { color: #f44747; }
 .warn { color: #cca700; }
 .info { color: #569cd6; }
@@ -158,7 +158,7 @@ ${content}
   }, [type, content])
 
   return (
-    <div className="relative bg-white dark:bg-zinc-950">
+    <div className="relative bg-background">
       <iframe
         ref={iframeRef}
         srcDoc={htmlContent}
@@ -172,7 +172,7 @@ ${content}
 
 function InlineCode({ children }: { children: React.ReactNode }) {
   return (
-    <code className="px-1.5 py-0.5 mx-0.5 rounded-md bg-zinc-200 dark:bg-zinc-800 text-pink-600 dark:text-pink-400 text-[0.85em] font-mono font-medium">
+    <code className="px-1.5 py-0.5 mx-0.5 rounded-md bg-muted text-primary text-[0.85em] font-mono font-medium">
       {children}
     </code>
   )
