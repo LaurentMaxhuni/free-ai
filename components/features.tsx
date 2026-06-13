@@ -61,7 +61,7 @@ const Features = () => {
           {features.map((feature) => (
             <Card
               key={feature.title}
-              className="flex flex-col border rounded-full overflow-hidden shadow-none pb-0"
+              className="flex flex-col border rounded-3xl overflow-hidden shadow-none pb-0"
             >
               <CardHeader>
                 <feature.icon className="size-8 text-primary" />
