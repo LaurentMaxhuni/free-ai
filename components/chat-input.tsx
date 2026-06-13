@@ -215,7 +215,7 @@ export function ChatInput({
           disabled={disabled}
           aria-label="Chat message"
           role="textbox"
-          className="w-full bg-transparent border-0 outline-none resize-none px-5 py-3.5 pr-28 text-sm placeholder:text-muted-foreground"
+          className="w-full bg-transparent border-0 outline-none resize-none px-5 py-3.5 pr-28 text-sm placeholder:text-muted-foreground flex"
           style={{ maxHeight: MAX_HEIGHT }}
         />
         <div className="absolute right-2 bottom-2 flex items-center gap-1">

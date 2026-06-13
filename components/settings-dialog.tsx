@@ -1,7 +1,8 @@
 "use client"
 
 import { useEffect, useState, useCallback } from "react"
-import { Settings as SettingsIcon, KeyRound, Cpu, Eye, EyeOff, ExternalLink, Trash2, Check, RotateCcw, Loader2 } from "lucide-react"
+import { useTheme } from "next-themes"
+import { Settings as SettingsIcon, KeyRound, Cpu, Sun, Moon, Eye, EyeOff, ExternalLink, Trash2, Check, RotateCcw, Loader2 } from "lucide-react"
 import {
   Dialog,
   DialogContent,
@@ -534,6 +535,44 @@ function ProviderKeyCard({
   )
 }
 
+function AppearanceTab() {
+  const { theme, setTheme } = useTheme()
+
+  const options = [
+    { value: "light", label: "Light", icon: Sun },
+    { value: "dark", label: "Dark", icon: Moon },
+    { value: "system", label: "System", icon: RotateCcw },
+  ] as const
+
+  return (
+    <div className="space-y-3">
+      <p className="text-sm text-muted-foreground">
+        Choose how Free.ai looks.
+      </p>
+      <div className="grid gap-2">
+        {options.map(({ value, label, icon: Icon }) => (
+          <button
+            key={value}
+            type="button"
+            onClick={() => setTheme(value)}
+            className={`flex items-center gap-3 w-full px-3 py-2.5 rounded-lg border text-sm transition-colors cursor-pointer ${
+              theme === value
+                ? "border-foreground bg-accent text-accent-foreground"
+                : "border-border hover:bg-muted/50 text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <Icon className="size-4 shrink-0" />
+            <span className="font-medium">{label}</span>
+            {theme === value && (
+              <Check className="size-3.5 ml-auto shrink-0" />
+            )}
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 function ApiKeysTab({
   configured,
   reload,
@@ -628,6 +667,10 @@ export function SettingsDialog() {
                 <Cpu className="size-3.5 mr-1.5" />
                 Models
               </TabsTrigger>
+              <TabsTrigger value="appearance">
+                <Sun className="size-3.5 mr-1.5" />
+                Appearance
+              </TabsTrigger>
               <TabsTrigger value="keys">
                 <KeyRound className="size-3.5 mr-1.5" />
                 API Keys
@@ -635,6 +678,9 @@ export function SettingsDialog() {
             </TabsList>
             <TabsContent value="models">
               <ModelsTab configured={configured} />
+            </TabsContent>
+            <TabsContent value="appearance">
+              <AppearanceTab />
             </TabsContent>
             <TabsContent value="keys">
               <ApiKeysTab configured={configured} reload={reload} />
