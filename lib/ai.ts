@@ -4,12 +4,75 @@ import { getSettings } from "./settings"
 
 export type ChatRole = "user" | "assistant" | "system"
 
+export type ChatContentPart =
+  | { type: "text"; text: string }
+  | { type: "image_url"; image_url: { url: string; detail?: "low" | "high" | "auto" } }
+
+export type FileAttachment = {
+  name: string
+  type: "image" | "text" | "pdf" | "code"
+  mimeType: string
+  data: string
+  size: number
+}
+
 export type ChatMessage = {
   role: ChatRole
   content: string
+  attachments?: FileAttachment[]
 }
 
 export type ChatMode = "text" | "image"
+
+const MAX_FILE_SIZE = 10 * 1024 * 1024
+const IMAGE_TYPES = ["image/png", "image/jpeg", "image/gif", "image/webp", "image/svg+xml"]
+const TEXT_TYPES = [
+  "text/plain", "text/html", "text/css", "text/csv",
+  "application/json", "application/xml",
+]
+const CODE_TYPES = [
+  "text/javascript", "application/javascript", "application/typescript",
+  "text/typescript", "text/jsx", "text/tsx",
+  "text/x-python", "text/x-java", "text/x-rust", "text/x-go",
+  "text/x-c", "text/x-cpp", "text/x-ruby", "text/x-php",
+  "text/x-swift", "text/x-kotlin", "text/x-scala",
+  "text/x-sh", "text/x-yaml", "text/x-toml", "text/markdown",
+  "text/x-sql", "text/x-dockerfile",
+]
+const PDF_TYPES = ["application/pdf"]
+
+export function getFileCategory(mimeType: string): FileAttachment["type"] | null {
+  if (IMAGE_TYPES.includes(mimeType)) return "image"
+  if (PDF_TYPES.includes(mimeType)) return "pdf"
+  if (CODE_TYPES.includes(mimeType) || mimeType.startsWith("text/")) return "code"
+  return null
+}
+
+export async function readFileAsAttachment(file: File): Promise<FileAttachment | null> {
+  if (file.size > MAX_FILE_SIZE) return null
+
+  const category = getFileCategory(file.type)
+  if (!category) return null
+
+  const base = { name: file.name, mimeType: file.type, size: file.size, type: category }
+
+  if (category === "image") {
+    return new Promise((resolve) => {
+      const reader = new FileReader()
+      reader.onload = () => resolve({ ...base, data: reader.result as string })
+      reader.onerror = () => resolve(null)
+      reader.readAsDataURL(file)
+    })
+  }
+
+  if (category === "pdf") {
+    const text = await file.text()
+    return { ...base, data: text.slice(0, 50000), type: "text" }
+  }
+
+  const text = await file.text()
+  return { ...base, data: text.slice(0, 100000), type: "code" }
+}
 
 const IMAGE_PREFIX = "__FREE_AI_IMAGE__"
 
@@ -58,12 +121,18 @@ async function getIdToken(): Promise<string> {
 
 export type StreamCallbacks = {
   onToken: (token: string) => void
+  onReasoning?: (token: string) => void
   onDone: () => void
   onError: (error: Error) => void
 }
 
+export type ApiMessage = {
+  role: ChatRole
+  content: string | ChatContentPart[]
+}
+
 export async function generateTextStream(
-  messages: ChatMessage[],
+  messages: ApiMessage[],
   signal?: AbortSignal,
   callbacks?: StreamCallbacks
 ): Promise<void> {
@@ -79,9 +148,7 @@ export async function generateTextStream(
     body: JSON.stringify({
       provider: settings.provider,
       model: settings.textModel,
-      messages: messages
-        .filter((m) => m.role === "user" || m.role === "assistant" || m.role === "system")
-        .map(({ role, content }) => ({ role, content })),
+      messages: messages.filter((m) => m.role === "user" || m.role === "assistant" || m.role === "system"),
     }),
     signal,
   })
@@ -122,8 +189,17 @@ export async function generateTextStream(
         if (parsed.error) {
           throw new ApiError(parsed.error, 502)
         }
-        if (typeof parsed.content === "string") {
+        const choice = parsed.choices?.[0]
+        const delta = choice?.delta
+        if (delta?.content) {
+          callbacks?.onToken(delta.content)
+        } else if (typeof parsed.content === "string") {
           callbacks?.onToken(parsed.content)
+        }
+        if (delta?.reasoning_content) {
+          callbacks?.onReasoning?.(delta.reasoning_content)
+        } else if (typeof parsed.reasoning_content === "string") {
+          callbacks?.onReasoning?.(parsed.reasoning_content)
         }
       } catch (err) {
         if (err instanceof ApiError) throw err
@@ -145,6 +221,25 @@ export async function generateText(
     onError: () => {},
   })
   return result
+}
+
+export function buildMultimodalContent(message: ChatMessage): string | ChatContentPart[] {
+  const atts = message.attachments
+  if (!atts || atts.length === 0) return message.content
+
+  const parts: ChatContentPart[] = []
+  if (message.content) {
+    parts.push({ type: "text", text: message.content })
+  }
+  for (const att of atts) {
+    if (att.type === "image") {
+      parts.push({ type: "image_url", image_url: { url: att.data, detail: "auto" } })
+    } else {
+      const lang = att.name.split(".").pop()
+      parts.push({ type: "text", text: `\n\nFile: ${att.name}\n\`\`\`${lang ?? ""}\n${att.data}\n\`\`\`` })
+    }
+  }
+  return parts
 }
 
 function hashString(input: string): number {

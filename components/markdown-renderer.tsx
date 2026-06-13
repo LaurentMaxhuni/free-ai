@@ -1,16 +1,24 @@
 "use client"
 
 import { useCallback, useMemo, useRef, useState } from "react"
+import { motion } from "motion/react"
 import ReactMarkdown from "react-markdown"
 import remarkGfm from "remark-gfm"
-import { Check, Copy, Eye, Code, Maximize2, Minimize2 } from "lucide-react"
+import { Check, Copy, Eye, Code, ExternalLink, Maximize2, Minimize2 } from "lucide-react"
+
+export type CodePreviewContent = {
+  type: "html" | "css" | "js"
+  content: string
+  language: string
+}
 
 type CodeBlockProps = {
   language?: string
   children: string
+  onPreview?: () => void
 }
 
-function CodeBlock({ language, children }: CodeBlockProps) {
+function CodeBlock({ language, children, onPreview }: CodeBlockProps) {
   const [copied, setCopied] = useState(false)
   const [showPreview, setShowPreview] = useState(false)
   const [expanded, setExpanded] = useState(false)
@@ -44,7 +52,7 @@ function CodeBlock({ language, children }: CodeBlockProps) {
   }, [isPreviewable, lang, children])
 
   return (
-    <div className="group/code relative my-3 rounded-full border bg-muted/80 overflow-hidden">
+    <div className="group/code relative my-3 rounded-3xl border bg-muted/80 overflow-hidden">
       <div className="flex items-center justify-between px-4 py-2 border-b border-border bg-muted/50">
         <div className="flex items-center gap-2">
           <span className="text-xs text-muted-foreground font-mono">
@@ -52,15 +60,32 @@ function CodeBlock({ language, children }: CodeBlockProps) {
           </span>
         </div>
         <div className="flex items-center gap-1">
-          {isPreviewable && (
+          {isPreviewable && previewContent && (
+              <button
+                type="button"
+                onClick={() => {
+                  if (onPreview) {
+                    onPreview()
+                  } else {
+                    setShowPreview((v) => !v)
+                  }
+                }}
+              className="flex items-center gap-1 text-xs px-2 py-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
+              aria-label="Open preview"
+            >
+              <Eye className="size-3" />
+              Preview
+            </button>
+          )}
+          {isPreviewable && onPreview && (
             <button
               type="button"
               onClick={() => setShowPreview((v) => !v)}
               className="flex items-center gap-1 text-xs px-2 py-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
-              aria-label={showPreview ? "Show code" : "Show preview"}
+              aria-label={showPreview ? "Show code" : "Show inline preview"}
             >
-              {showPreview ? <Code className="size-3" /> : <Eye className="size-3" />}
-              {showPreview ? "Code" : "Preview"}
+              {showPreview ? <Code className="size-3" /> : <ExternalLink className="size-3" />}
+              {showPreview ? "Code" : "Inline"}
             </button>
           )}
           <button
@@ -86,13 +111,18 @@ function CodeBlock({ language, children }: CodeBlockProps) {
       {showPreview && previewContent ? (
         <CodePreview type={previewContent.type} content={previewContent.content} />
       ) : (
-        <div className={expanded ? "max-h-[80vh] overflow-auto" : "max-h-[400px] overflow-auto"}>
-          <pre className="p-4 overflow-x-auto text-sm leading-relaxed">
+        <motion.div
+          initial={false}
+          animate={{ height: expanded ? "80vh" : "400px" }}
+          transition={{ duration: 0.25, ease: "easeInOut" }}
+          className="overflow-hidden"
+        >
+          <pre className="p-4 overflow-x-auto text-sm leading-relaxed h-full">
             <code ref={codeRef} className={`language-${lang || "text"}`}>
               {children}
             </code>
           </pre>
-        </div>
+        </motion.div>
       )}
     </div>
   )
@@ -180,9 +210,10 @@ function InlineCode({ children }: { children: React.ReactNode }) {
 
 type MarkdownRendererProps = {
   content: string
+  onPreview?: () => void
 }
 
-export function MarkdownRenderer({ content }: MarkdownRendererProps) {
+export function MarkdownRenderer({ content, onPreview }: MarkdownRendererProps) {
   return (
     <ReactMarkdown
       remarkPlugins={[remarkGfm]}
@@ -196,7 +227,7 @@ export function MarkdownRenderer({ content }: MarkdownRendererProps) {
           }
 
           return (
-            <CodeBlock language={match?.[1]}>
+            <CodeBlock language={match?.[1]} onPreview={onPreview}>
               {String(children).replace(/\n$/, "")}
             </CodeBlock>
           )
@@ -271,4 +302,25 @@ export function MarkdownRenderer({ content }: MarkdownRendererProps) {
       {content}
     </ReactMarkdown>
   )
+}
+
+const BLOCK_RE = /```(\S+)?\s*(?:\n|$)([\s\S]*?)```/g
+
+export function extractCodeBlocks(markdown: string): CodePreviewContent[] {
+  const blocks: CodePreviewContent[] = []
+  BLOCK_RE.lastIndex = 0
+  let match: RegExpExecArray | null
+  while ((match = BLOCK_RE.exec(markdown)) !== null) {
+    const lang = (match[1] ?? "").toLowerCase()
+    const content = match[2].trim()
+    if (!content) continue
+    if (["html", "htm"].includes(lang)) {
+      blocks.push({ type: "html", content, language: lang })
+    } else if (lang === "css") {
+      blocks.push({ type: "css", content, language: lang })
+    } else if (["javascript", "js", "jsx", "tsx"].includes(lang)) {
+      blocks.push({ type: "js", content, language: lang })
+    }
+  }
+  return blocks
 }

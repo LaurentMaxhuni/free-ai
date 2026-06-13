@@ -300,6 +300,36 @@ function ModelsTab({ configured }: { configured: ConfiguredProvider[] | null }) 
         </div>
       ) : null}
 
+      <div className="space-y-2 pt-2 border-t">
+        <h4 className="text-sm font-medium">Quick selector providers</h4>
+        <p className="text-xs text-muted-foreground">
+          Choose which providers appear in the chat input model dropdown.
+        </p>
+        <div className="grid grid-cols-2 gap-2">
+          {PROVIDER_LIST.map((p) => (
+            <label
+              key={p.id}
+              className="flex items-center gap-2 text-xs cursor-pointer hover:bg-muted/50 rounded px-2 py-1.5 transition-colors"
+            >
+              <input
+                type="checkbox"
+                checked={settings.visibleProviders?.includes(p.id as ProviderId) ?? true}
+                onChange={(e) => {
+                  const current = settings.visibleProviders ?? PROVIDER_LIST.map((x) => x.id)
+                  const next = e.target.checked
+                    ? [...current, p.id]
+                    : current.filter((id) => id !== p.id)
+                  saveSettings({ visibleProviders: next })
+                  setSettings((prev) => ({ ...prev, visibleProviders: next }))
+                }}
+                className="accent-foreground"
+              />
+              <span>{p.name}</span>
+            </label>
+          ))}
+        </div>
+      </div>
+
       <p className="text-xs text-muted-foreground">
         Add API keys in the <span className="font-medium">API Keys</span> tab.
       </p>

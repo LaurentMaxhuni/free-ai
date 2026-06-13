@@ -38,7 +38,8 @@ export async function GET(request: Request) {
         (m: any) =>
           m?.id &&
           m?.pipeline_tag === "text-to-image" &&
-          m?.inference !== false
+          m?.inference !== false &&
+          (typeof m?.inference === "string" || m?.inference === true)
       )
       .map((m: any) => ({
         id: m.id,

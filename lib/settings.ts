@@ -6,12 +6,23 @@ export type Settings = {
   provider: ProviderId
   textModel: string
   imageModel: string
+  visibleProviders: ProviderId[]
 }
+
+const ALL_PROVIDERS: ProviderId[] = [
+  "pollinations",
+  "puter",
+  "ollama",
+  "groq",
+  "openrouter",
+  "huggingface",
+]
 
 const DEFAULTS: Settings = {
   provider: "pollinations",
   textModel: "openai",
   imageModel: "flux",
+  visibleProviders: [...ALL_PROVIDERS],
 }
 
 export function getSettings(): Settings {

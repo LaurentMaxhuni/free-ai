@@ -7,6 +7,7 @@ export type Chat = {
   messages: ChatMessage[]
   createdAt: number
   updatedAt: number
+  _syncVersion?: number
 }
 
 const CHATS_KEY = "free-ai:chats"
@@ -77,6 +78,7 @@ export function createChat(mode: ChatMode = "text"): Chat {
     messages: [],
     createdAt: now,
     updatedAt: now,
+    _syncVersion: 0,
   }
 }
 
@@ -84,6 +86,14 @@ export function upsertChat(chat: Chat): void {
   const chats = getAllChats()
   const index = chats.findIndex((c) => c.id === chat.id)
   if (index >= 0) {
+    const existing = chats[index]
+    if (
+      chat._syncVersion !== undefined &&
+      existing._syncVersion !== undefined &&
+      chat._syncVersion < existing._syncVersion
+    ) {
+      return
+    }
     chats[index] = chat
   } else {
     chats.unshift(chat)
@@ -92,6 +102,14 @@ export function upsertChat(chat: Chat): void {
     }
   }
   saveChats(chats)
+}
+
+export function bumpSyncVersion(chat: Chat): Chat {
+  return { ...chat, _syncVersion: (chat._syncVersion ?? 0) + 1 }
+}
+
+export function getSyncVersion(chat: Chat): number {
+  return chat._syncVersion ?? 0
 }
 
 export function deleteChat(id: string): void {

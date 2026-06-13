@@ -68,21 +68,70 @@ async function callHuggingFace(
   prompt: string,
   apiKey: string
 ): Promise<string> {
-  const response = await fetch(`${baseUrl}/models/${model}`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ inputs: prompt }),
-  })
-  if (!response.ok) {
-    const errText = await response.text().catch(() => "")
-    throw new Error(`Hugging Face error (${response.status}): ${errText}`)
+  const MAX_RETRIES = 3
+  const RETRY_DELAY = 2000
+
+  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+    const response = await fetch(`${baseUrl}/models/${model}`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ inputs: prompt }),
+    })
+
+    if (response.status === 503 && attempt < MAX_RETRIES) {
+      await new Promise((r) => setTimeout(r, RETRY_DELAY * attempt))
+      continue
+    }
+
+    if (!response.ok) {
+      const errText = await response.text().catch(() => "")
+      if (response.status === 503) {
+        throw new Error(
+          `Hugging Face model is still loading. Try again in a moment.`
+        )
+      }
+      if (response.status === 429) {
+        throw new Error(
+          `Hugging Face rate limit exceeded. Wait a moment and try again.`
+        )
+      }
+      if (response.status === 401 || response.status === 403) {
+        throw new Error(
+          `Hugging Face authentication failed. Check your API key in Settings → API Keys.`
+        )
+      }
+      const bodyPreview = errText.slice(0, 500)
+      throw new Error(`Hugging Face error (${response.status}): ${bodyPreview}`)
+    }
+
+    const contentType = response.headers.get("content-type") ?? ""
+
+    if (contentType.startsWith("application/json") || contentType.startsWith("text/")) {
+      const text = await response.text()
+      try {
+        const json = JSON.parse(text)
+        const errorMsg =
+          json?.error ??
+          (Array.isArray(json) ? json[0]?.generated_text ?? JSON.stringify(json).slice(0, 300) : JSON.stringify(json).slice(0, 300))
+        throw new Error(`Model returned text instead of image: ${errorMsg}`)
+      } catch (err) {
+        if (err instanceof Error && err.message.startsWith("Model returned text")) throw err
+        throw new Error(`Model returned unexpected content: ${text.slice(0, 300)}`)
+      }
+    }
+
+    const blob = await response.blob()
+    if (blob.size === 0) {
+      throw new Error("Hugging Face returned an empty response.")
+    }
+    const arrayBuffer = await blob.arrayBuffer()
+    const base64 = Buffer.from(arrayBuffer).toString("base64")
+    const outType = blob.type || "image/png"
+    return `data:${outType};base64,${base64}`
   }
-  const blob = await response.blob()
-  const arrayBuffer = await blob.arrayBuffer()
-  const base64 = Buffer.from(arrayBuffer).toString("base64")
-  const contentType = blob.type || "image/png"
-  return `data:${contentType};base64,${base64}`
+
+  throw new Error("Hugging Face model failed to load after retries.")
 }

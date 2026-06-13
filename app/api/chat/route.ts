@@ -6,9 +6,14 @@ import { getProviderCredentials } from "@/lib/server/keys"
 
 const PROVIDER_IDS = Object.keys(PROVIDERS) as ProviderId[]
 
+const contentPartSchema: z.ZodType<{ type: "text"; text: string } | { type: "image_url"; image_url: { url: string; detail?: string } }> = z.discriminatedUnion("type", [
+  z.object({ type: z.literal("text"), text: z.string().min(1).max(50000) }),
+  z.object({ type: z.literal("image_url"), image_url: z.object({ url: z.string().min(1).max(500000), detail: z.string().optional() }) }),
+])
+
 const messageSchema = z.object({
   role: z.enum(["user", "assistant", "system"]),
-  content: z.string().min(1).max(20000),
+  content: z.union([z.string().min(1).max(20000), z.array(contentPartSchema).min(1).max(100)]),
 })
 
 const requestSchema = z.object({
@@ -150,7 +155,10 @@ async function streamOpenAICompatible(
 
       try {
         const parsed = JSON.parse(data)
-        const delta = parsed?.choices?.[0]?.delta?.content
+        const delta =
+          parsed?.choices?.[0]?.delta?.content ??
+          parsed?.choices?.[0]?.text ??
+          parsed?.content
         if (typeof delta === "string" && delta) {
           send(JSON.stringify({ content: delta }))
         }

@@ -16,6 +16,8 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet"
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden"
+import { CodePreviewPanel } from "@/components/code-preview-panel"
+import { extractCodeBlocks, type CodePreviewContent } from "@/components/markdown-renderer"
 import {
   type Chat,
   createChat,
@@ -26,9 +28,12 @@ import {
   setActiveChatId,
   upsertChat,
 } from "@/lib/chat-storage"
+import type { ChatMessage } from "@/lib/ai"
 import {
   type ChatMode,
+  type FileAttachment,
   buildImageMessage,
+  buildMultimodalContent,
   generateTextStream,
 } from "@/lib/ai"
 import { startChatSync, syncChat } from "@/lib/chat-sync"
@@ -40,7 +45,13 @@ function ChatViewInner() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [hydrated, setHydrated] = useState(false)
   const [streamingContent, setStreamingContent] = useState("")
+  const [reasoningContent, setReasoningContent] = useState("")
+  const [previewBlocks, setPreviewBlocks] = useState<CodePreviewContent[]>([])
+  const [showPreviewPanel, setShowPreviewPanel] = useState(false)
   const abortRef = useRef<AbortController | null>(null)
+  const bufferRef = useRef("")
+  const reasoningBufferRef = useRef("")
+  const rafRef = useRef<number | null>(null)
 
   useEffect(() => {
     startChatSync(auth)
@@ -78,6 +89,12 @@ function ChatViewInner() {
     setActiveChat(null)
     setActiveChatId(null)
     setStreamingContent("")
+    setReasoningContent("")
+    bufferRef.current = ""
+    reasoningBufferRef.current = ""
+    setPreviewBlocks([])
+    setShowPreviewPanel(false)
+    setSidebarOpen(false)
   }, [])
 
   const handleSelectChat = useCallback((id: string) => {
@@ -86,20 +103,32 @@ function ChatViewInner() {
       setActiveChat(chat)
     }
     setStreamingContent("")
+    setReasoningContent("")
+    bufferRef.current = ""
+    reasoningBufferRef.current = ""
+    setPreviewBlocks([])
+    setShowPreviewPanel(false)
     setSidebarOpen(false)
   }, [])
 
   const handleStop = useCallback(() => {
     abortRef.current?.abort()
     setIsGenerating(false)
+    bufferRef.current = ""
+    reasoningBufferRef.current = ""
     setStreamingContent("")
+    setReasoningContent("")
   }, [])
 
   const handleSend = useCallback(
-    async (content: string, mode: ChatMode) => {
+    async (content: string, mode: ChatMode, searchEnabled?: boolean, attachments?: FileAttachment[]) => {
       if (isGenerating) return
 
-      const userMessage = { role: "user" as const, content }
+      const userMessage: ChatMessage & { attachments?: FileAttachment[] } = {
+        role: "user" as const,
+        content,
+        ...(attachments && attachments.length > 0 ? { attachments } : {}),
+      }
 
       let chat: Chat
       if (!activeChat) {
@@ -121,10 +150,38 @@ function ChatViewInner() {
       syncChat(chat)
       setActiveChatId(chat.id)
 
+      let searchContext = ""
+      if (searchEnabled && mode === "text") {
+        try {
+          const searchRes = await fetch("/api/search", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ query: content }),
+          })
+          if (searchRes.ok) {
+            const searchData = await searchRes.json()
+            if (searchData.results) {
+              searchContext = `Web search results for "${content}":\n\n${searchData.results}`
+            }
+          }
+        } catch {
+          /* search failure is non-fatal */
+        }
+      }
+
       const controller = new AbortController()
       abortRef.current = controller
       setIsGenerating(true)
       setStreamingContent("")
+
+      const flush = () => {
+        if (rafRef.current !== null) return
+        rafRef.current = requestAnimationFrame(() => {
+          rafRef.current = null
+          setStreamingContent(bufferRef.current)
+          setReasoningContent(reasoningBufferRef.current)
+        })
+      }
 
       try {
         if (mode === "image") {
@@ -138,21 +195,41 @@ function ChatViewInner() {
           upsertChat(updated)
           syncChat(updated)
         } else {
-          const apiMessages = chat.messages
-            .filter((m) => m.role !== "system")
-            .map(({ role, content: c }) => ({ role, content: c }))
+          const systemMessages = searchContext
+            ? [{ role: "system" as const, content: searchContext }]
+            : []
+          const apiMessages = [
+            ...systemMessages,
+            ...chat.messages
+              .filter((m) => m.role !== "system")
+              .map((m) => ({
+                role: m.role,
+                content: buildMultimodalContent(m as ChatMessage & { attachments?: FileAttachment[] }),
+              })),
+          ]
 
-          let fullContent = ""
+          bufferRef.current = ""
+          reasoningBufferRef.current = ""
 
           await generateTextStream(apiMessages, controller.signal, {
             onToken: (token) => {
-              fullContent += token
-              setStreamingContent(fullContent)
+              bufferRef.current += token
+              flush()
+            },
+            onReasoning: (token) => {
+              reasoningBufferRef.current += token
+              flush()
             },
             onDone: () => {
+              if (rafRef.current !== null) {
+                cancelAnimationFrame(rafRef.current)
+                rafRef.current = null
+              }
+              setStreamingContent(bufferRef.current)
+              setReasoningContent(reasoningBufferRef.current)
               const assistantMessage = {
                 role: "assistant" as const,
-                content: fullContent,
+                content: bufferRef.current,
               }
               setActiveChat((prev) => {
                 if (!prev) return prev
@@ -165,7 +242,10 @@ function ChatViewInner() {
                   syncChat(updated)
                   return updated
                 })
+                bufferRef.current = ""
+                reasoningBufferRef.current = ""
                 setStreamingContent("")
+                setReasoningContent("")
               },
               onError: (error) => {
               throw error
@@ -192,7 +272,10 @@ function ChatViewInner() {
           syncChat(updated)
           return updated
         })
+        bufferRef.current = ""
+        reasoningBufferRef.current = ""
         setStreamingContent("")
+        setReasoningContent("")
       } finally {
         setIsGenerating(false)
         abortRef.current = null
@@ -207,6 +290,18 @@ function ChatViewInner() {
     },
     [handleSend]
   )
+
+  const scanPreviewBlocks = useCallback(() => {
+    const msgs = activeChat?.messages ?? []
+    const allContent = [...msgs.map((m) => m.content), streamingContent]
+      .filter(Boolean)
+      .join("\n\n")
+    setPreviewBlocks(extractCodeBlocks(allContent))
+  }, [activeChat, streamingContent])
+
+  useEffect(() => {
+    if (showPreviewPanel) scanPreviewBlocks()
+  }, [activeChat?.messages, streamingContent, showPreviewPanel, scanPreviewBlocks])
 
   const sidebar = (
     <ChatSidebar
@@ -241,49 +336,80 @@ function ChatViewInner() {
         </SheetContent>
       </Sheet>
 
-      <main className="flex-1 flex flex-col min-w-0">
-        <header className="h-14 border-b flex items-center justify-between gap-2 px-4 shrink-0 bg-background/80 backdrop-blur">
-          <div className="flex items-center gap-2 min-w-0">
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon-sm"
-              className="md:hidden shrink-0"
-              onClick={() => setSidebarOpen(true)}
-              aria-label="Open sidebar"
-            >
-              <Menu className="size-4" />
-            </Button>
-            <Sparkles className="size-4 text-primary shrink-0" />
-            <h1 className="text-sm font-semibold truncate">{headerTitle}</h1>
-            <span className="text-xs text-muted-foreground hidden sm:inline truncate">
-              · {getSettings().provider}
-            </span>
+      <div className="sm:hidden">
+        {previewBlocks.length > 0 && (
+          <Sheet open={showPreviewPanel} onOpenChange={setShowPreviewPanel}>
+            <VisuallyHidden>
+              <SheetTitle>Code preview</SheetTitle>
+            </VisuallyHidden>
+            <SheetContent side="right" className="w-full p-0">
+              <CodePreviewPanel
+                blocks={previewBlocks}
+                onClose={() => setShowPreviewPanel(false)}
+              />
+            </SheetContent>
+          </Sheet>
+        )}
+      </div>
+
+      <main className="flex-1 flex min-w-0">
+        <div className="flex flex-col flex-1 min-w-0">
+          <header className="h-14 border-b flex items-center justify-between gap-2 px-4 shrink-0 bg-background/80 backdrop-blur">
+            <div className="flex items-center gap-2 min-w-0">
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon-sm"
+                className="md:hidden shrink-0"
+                onClick={() => setSidebarOpen(true)}
+                aria-label="Open sidebar"
+              >
+                <Menu className="size-4" />
+              </Button>
+              <Sparkles className="size-4 text-primary shrink-0" />
+              <h1 className="text-sm font-semibold truncate">{headerTitle}</h1>
+              <span className="text-xs text-muted-foreground hidden sm:inline truncate">
+                · {getSettings().provider}
+              </span>
+            </div>
+            <div className="flex items-center gap-1">
+              <SettingsDialog />
+            </div>
+          </header>
+
+          <div className="flex-1 overflow-y-auto">
+            {hydrated && (!activeChat || activeChat.messages.length === 0) ? (
+              <ChatEmpty onSuggestion={handleSuggestion} />
+            ) : (
+              <ChatMessages
+                messages={activeChat?.messages ?? []}
+                isGenerating={isGenerating}
+                streamingContent={streamingContent}
+                reasoningContent={reasoningContent}
+                onPreview={() => setShowPreviewPanel(true)}
+              />
+            )}
           </div>
-          <SettingsDialog />
-        </header>
 
-        <div className="flex-1 overflow-y-auto">
-          {hydrated && (!activeChat || activeChat.messages.length === 0) ? (
-            <ChatEmpty onSuggestion={handleSuggestion} />
-          ) : (
-            <ChatMessages
-              messages={activeChat?.messages ?? []}
+          <div className="border-t p-4 shrink-0 bg-background">
+            <ChatInput
+              onSend={handleSend}
+              onStop={handleStop}
               isGenerating={isGenerating}
-              streamingContent={streamingContent}
+              initialMode={activeChat?.mode ?? "text"}
+              disabled={!hydrated}
             />
-          )}
+          </div>
         </div>
 
-        <div className="border-t p-4 shrink-0 bg-background">
-          <ChatInput
-            onSend={handleSend}
-            onStop={handleStop}
-            isGenerating={isGenerating}
-            initialMode={activeChat?.mode ?? "text"}
-            disabled={!hydrated}
-          />
-        </div>
+        {showPreviewPanel && previewBlocks.length > 0 && (
+          <aside className="hidden sm:flex w-1/2 shrink-0 border-l">
+            <CodePreviewPanel
+              blocks={previewBlocks}
+              onClose={() => setShowPreviewPanel(false)}
+            />
+          </aside>
+        )}
       </main>
     </div>
   )
