@@ -57,6 +57,7 @@ function ChatViewInner() {
   const rafRef = useRef<number | null>(null)
 
   useEffect(() => {
+    if (!auth) return
     const unsub = onAuthStateChanged(auth, (user) => {
       setUserName(user?.displayName ?? "")
       setUserAvatar(user?.photoURL ?? "")
@@ -65,6 +66,7 @@ function ChatViewInner() {
   }, [])
 
   useEffect(() => {
+    if (!auth) return
     startChatSync(auth)
   }, [])
 
