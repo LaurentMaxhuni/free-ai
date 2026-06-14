@@ -1,49 +1,51 @@
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
+"use client";
+
+import SpotlightCard from "@/components/SpotlightCard"
 import {
-  BookCheck,
-  ChartPie,
-  FolderSync,
-  Goal,
-  Users,
-  Zap,
+  MessageSquare,
+  Image,
+  Globe,
+  FileUp,
+  Code,
+  Infinity,
 } from "lucide-react";
 
 const features = [
   {
-    icon: Zap,
-    title: "AI-Powered Generation",
+    icon: MessageSquare,
+    title: "Multi-Provider Chat",
     description:
-      "Generate high-quality content instantly using advanced AI algorithms tailored to your needs.",
+      "Access models from Pollinations.ai, Puter, Ollama, Groq, and OpenRouter — all from one clean interface. Switch providers on the fly.",
   },
   {
-    icon: ChartPie,
-    title: "Analytics Dashboard",
+    icon: Image,
+    title: "Free Image Generation",
     description:
-      "Track performance metrics and gain insights into your content's impact in real-time.",
+      "Create images from text prompts using Flux and Hugging Face models. No credits, no subscriptions, no limits.",
   },
   {
-    icon: FolderSync,
-    title: "Multi-Platform Publishing",
+    icon: Globe,
+    title: "Web Search",
     description:
-      "Publish your content across multiple platforms simultaneously with a single click.",
+      "Give the AI access to real-time search results from DuckDuckGo for more accurate and current information.",
   },
   {
-    icon: Users,
-    title: "Collaboration Tools",
+    icon: FileUp,
+    title: "File Uploads & Vision",
     description:
-      "Work seamlessly with your team using built-in commenting, reviews, and version control.",
+      "Upload images and documents for AI-powered analysis. Attach files to your messages and let the models read them.",
   },
   {
-    icon: BookCheck,
-    title: "Content Library",
+    icon: Code,
+    title: "Live Code Preview",
     description:
-      "Access a comprehensive library of templates, frameworks, and pre-built content blocks.",
+      "Generate HTML, CSS, and JavaScript and preview it instantly. Perfect for prototyping UI components and layouts.",
   },
   {
-    icon: Goal,
-    title: "SEO Optimization",
+    icon: Infinity,
+    title: "Completely Free",
     description:
-      "Automatically optimize your content for search engines to improve visibility and reach.",
+      "No paywalls, no usage quotas, no credit card required. Free.ai aggregates free tiers from multiple providers so you never hit a wall.",
   },
 ];
 
@@ -52,30 +54,26 @@ const Features = () => {
     <div className="min-h-dvh flex items-center justify-center px-6 py-12">
       <div className="max-w-(--breakpoint-lg) w-full py-10 px-6">
         <h2 className="text-4xl md:text-[2.5rem] md:leading-[1.2] font-semibold tracking-[-0.03em] sm:max-w-xl text-pretty">
-          Strengthen Your Strategy
+          What Free.ai Actually Does
         </h2>
         <p className="mt-2 text-muted-foreground text-lg sm:text-xl">
-          Enhance your strategy with intelligent tools designed for success.
+          A free, multi-provider AI chat interface with image generation, web search, and more.
         </p>
         <div className="mt-10 w-full mx-auto grid md:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-8">
           {features.map((feature) => (
-            <Card
+            <SpotlightCard
               key={feature.title}
-              className="flex flex-col border rounded-3xl overflow-hidden shadow-none pb-0"
+              className="flex flex-col rounded-3xl overflow-hidden shadow-none border-2! border-border/40! bg-card/50! hover:bg-card/70! transition-colors duration-300"
+              spotlightColor="rgba(0, 229, 255, 0.15)"
             >
-              <CardHeader>
-                <feature.icon className="size-8 text-primary" />
-                <h4 className="mt-3! text-xl font-semibold tracking-tight">
-                  {feature.title}
-                </h4>
-                <p className="mt-1 text-muted-foreground text-[17px]">
-                  {feature.description}
-                </p>
-              </CardHeader>
-              <CardContent className="mt-auto px-0 pb-0">
-                <div className="bg-muted h-40 ml-6 rounded-tl-xl" />
-              </CardContent>
-            </Card>
+              <feature.icon className="size-8 text-primary" />
+              <h4 className="mt-4 text-xl font-semibold tracking-tight">
+                {feature.title}
+              </h4>
+              <p className="mt-2 text-muted-foreground text-[17px]">
+                {feature.description}
+              </p>
+            </SpotlightCard>
           ))}
         </div>
       </div>

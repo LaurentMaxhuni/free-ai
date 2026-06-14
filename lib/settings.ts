@@ -10,6 +10,7 @@ export type Settings = {
 }
 
 const ALL_PROVIDERS: ProviderId[] = [
+  "freeai",
   "pollinations",
   "puter",
   "ollama",
@@ -19,9 +20,9 @@ const ALL_PROVIDERS: ProviderId[] = [
 ]
 
 const DEFAULTS: Settings = {
-  provider: "pollinations",
-  textModel: "openai",
-  imageModel: "flux",
+  provider: "freeai",
+  textModel: "@cf/google/gemma-4-26b-a4b-it",
+  imageModel: "@cf/black-forest-labs/flux-1-schnell",
   visibleProviders: [...ALL_PROVIDERS],
 }
 

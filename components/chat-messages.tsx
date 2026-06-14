@@ -52,8 +52,17 @@ function ImageBubble({ url }: { url: string }) {
     )
   }
 
+  const handleDownload = () => {
+    const a = document.createElement("a")
+    a.href = url
+    a.download = `free-ai-image-${Date.now()}.png`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+  }
+
   return (
-    <div className="rounded-2xl overflow-hidden border bg-muted max-w-lg">
+    <div className="relative group rounded-2xl overflow-hidden border bg-muted max-w-lg">
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src={url}
@@ -62,6 +71,18 @@ function ImageBubble({ url }: { url: string }) {
         loading="lazy"
         onError={() => setError(url.startsWith("data:") ? "The image data could not be rendered." : "Failed to load from external source.")}
       />
+      <button
+        type="button"
+        onClick={handleDownload}
+        className="absolute top-2 right-2 size-8 flex items-center justify-center rounded-lg bg-black/50 text-white opacity-0 group-hover:opacity-100 hover:bg-black/70 transition-opacity cursor-pointer"
+        title="Download image"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+          <polyline points="7 10 12 15 17 10" />
+          <line x1="12" y1="15" x2="12" y2="3" />
+        </svg>
+      </button>
     </div>
   )
 }

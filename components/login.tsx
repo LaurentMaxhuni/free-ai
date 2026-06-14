@@ -103,8 +103,8 @@ const Login = () => {
 
           <p className="mt-6 text-xs text-muted-foreground text-center">
             By continuing you agree to our{" "}
-            <span className="underline">Terms</span> and{" "}
-            <span className="underline">Privacy Policy</span>.
+            <a href="/terms" className="underline hover:text-foreground transition-colors">Terms</a> and{" "}
+            <a href="/privacy" className="underline hover:text-foreground transition-colors">Privacy Policy</a>.
           </p>
         </div>
       </div>

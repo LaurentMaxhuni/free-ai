@@ -40,21 +40,35 @@ export async function POST(request: Request) {
     )
   }
 
-  const creds = await getProviderCredentials(decoded.uid, providerId as ProviderId)
-  if (provider.requiresKey && !creds.apiKey) {
-    return errorResponse(
-      `${provider.name} requires an API key. Add one in Settings → API Keys.`,
-      400
-    )
+  let apiKey = ""
+  let baseUrl = provider.baseUrl
+
+  if (providerId === "freeai") {
+    const accountId = process.env.CLOUDFLARE_ACCOUNT_ID
+    apiKey = process.env.CLOUDFLARE_API_TOKEN ?? ""
+    if (!accountId || !apiKey) {
+      return errorResponse(
+        "Free.ai image model is not configured. Set CLOUDFLARE_ACCOUNT_ID and CLOUDFLARE_API_TOKEN in your environment.",
+        500
+      )
+    }
+    baseUrl = `https://api.cloudflare.com/client/v4/accounts/${accountId}/ai`
+  } else {
+    const creds = await getProviderCredentials(decoded.uid, providerId as ProviderId)
+    if (provider.requiresKey && !creds.apiKey) {
+      return errorResponse(
+        `${provider.name} requires an API key. Add one in Settings → API Keys.`,
+        400
+      )
+    }
+    apiKey = creds.apiKey ?? ""
+    baseUrl = creds.baseUrl ?? provider.baseUrl
   }
 
   try {
-    const dataUrl = await callHuggingFace(
-      creds.baseUrl ?? provider.baseUrl,
-      model,
-      prompt,
-      creds.apiKey ?? ""
-    )
+    const dataUrl = providerId === "freeai"
+      ? await callCloudflareAI(baseUrl, model, prompt, apiKey)
+      : await callHuggingFace(baseUrl, model, prompt, apiKey)
     return NextResponse.json({ dataUrl })
   } catch (err) {
     const message = err instanceof Error ? err.message : "Provider request failed"
@@ -134,4 +148,37 @@ async function callHuggingFace(
   }
 
   throw new Error("Hugging Face model failed to load after retries.")
+}
+
+async function callCloudflareAI(
+  baseUrl: string,
+  model: string,
+  prompt: string,
+  apiKey: string
+): Promise<string> {
+  const response = await fetch(`${baseUrl}/run/${model}`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ prompt }),
+  })
+
+  if (!response.ok) {
+    const errText = await response.text().catch(() => "")
+    throw new Error(`Cloudflare AI error (${response.status}): ${errText}`)
+  }
+
+  const json = await response.json()
+  if (!json.success) {
+    throw new Error(`Cloudflare AI error: ${json.errors?.[0]?.message ?? "unknown"}`)
+  }
+
+  const imageBase64 = json.result?.image
+  if (!imageBase64) {
+    throw new Error("Cloudflare AI returned no image data.")
+  }
+
+  return `data:image/png;base64,${imageBase64}`
 }

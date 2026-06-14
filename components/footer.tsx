@@ -6,27 +6,27 @@ import { Logo } from "./logo";
 const footerLinks = [
   {
     title: "Overview",
-    href: "#",
+    href: "/",
   },
   {
-    title: "Features",
-    href: "#",
+    title: "Blog",
+    href: "/blog",
   },
   {
-    title: "Pricing",
-    href: "#",
+    title: "About",
+    href: "/about",
   },
   {
-    title: "Careers",
-    href: "#",
+    title: "Contact",
+    href: "/contact",
   },
   {
-    title: "Help",
-    href: "#",
+    title: "Terms",
+    href: "/terms",
   },
   {
     title: "Privacy",
-    href: "#",
+    href: "/privacy",
   },
 ];
 

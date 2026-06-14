@@ -52,17 +52,32 @@ export async function POST(request: Request) {
     )
   }
 
-  const creds = await getProviderCredentials(decoded.uid, providerId)
-  if (provider.requiresKey && !creds.apiKey) {
-    return errorResponse(
-      `${provider.name} requires an API key. Add one in Settings → API Keys.`,
-      400
-    )
+  let apiKey = ""
+  let baseUrl = provider.baseUrl
+
+  if (providerId === "freeai") {
+    const accountId = process.env.CLOUDFLARE_ACCOUNT_ID
+    apiKey = process.env.CLOUDFLARE_API_TOKEN ?? ""
+    if (!accountId || !apiKey) {
+      return errorResponse(
+        "Free.ai model is not configured. Set CLOUDFLARE_ACCOUNT_ID and CLOUDFLARE_API_TOKEN in your environment.",
+        500
+      )
+    }
+    baseUrl = `https://api.cloudflare.com/client/v4/accounts/${accountId}/ai/v1`
+  } else {
+    const creds = await getProviderCredentials(decoded.uid, providerId)
+    if (provider.requiresKey && !creds.apiKey) {
+      return errorResponse(
+        `${provider.name} requires an API key. Add one in Settings → API Keys.`,
+        400
+      )
+    }
+    apiKey = creds.apiKey ?? ""
+    baseUrl = creds.baseUrl ?? provider.baseUrl
   }
 
   try {
-    const baseUrl = creds.baseUrl ?? provider.baseUrl
-
     const encoder = new TextEncoder()
     const stream = new ReadableStream({
       async start(controller) {
@@ -79,7 +94,7 @@ export async function POST(request: Request) {
               provider.chatPath ?? "/chat/completions",
               model,
               messages,
-              creds.apiKey ?? "",
+              apiKey,
               send
             )
           }

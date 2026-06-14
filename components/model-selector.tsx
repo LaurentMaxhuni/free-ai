@@ -26,6 +26,11 @@ export function ModelSelector({ mode }: { mode: ChatMode }) {
         ? p.textModels.length > 0 || p.dynamicModels
         : p.imageModels.length > 0 || p.dynamicImageModels
     )
+    .sort((a, b) => {
+      if (a.id === "freeai") return -1
+      if (b.id === "freeai") return 1
+      return 0
+    })
 
   useEffect(() => {
     providerGroups.forEach(async (p) => {

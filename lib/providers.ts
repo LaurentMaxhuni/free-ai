@@ -1,4 +1,5 @@
 export type ProviderId =
+  | "freeai"
   | "pollinations"
   | "puter"
   | "ollama"
@@ -46,6 +47,20 @@ export type Provider = {
 }
 
 export const PROVIDERS: Record<ProviderId, Provider> = {
+  freeai: {
+    id: "freeai",
+    name: "Free.ai",
+    description:
+      "Built-in model powered by Cloudflare Workers AI. Always available, no setup needed.",
+    capabilities: ["text", "image"],
+    baseUrl: "https://api.cloudflare.com/client/v4/accounts",
+    requiresKey: false,
+    textModels: [{ id: "@cf/google/gemma-4-26b-a4b-it", label: "Free.ai" }],
+    imageModels: [
+      { id: "@cf/black-forest-labs/flux-1-schnell", label: "Free Image" },
+    ],
+  },
+
   pollinations: {
     id: "pollinations",
     name: "Pollinations.ai",
