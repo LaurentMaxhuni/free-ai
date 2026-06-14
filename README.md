@@ -14,8 +14,8 @@ A free, multi-provider AI chat app — text and image generation, with Firebase 
 
 | Provider | Text | Image | Key required | Model list |
 |---|---|---|---|---|
-| Pollinations.ai | yes | yes | no | static |
-| Puter | yes | no | no | static |
+| Pollinations.ai | yes | yes | yes | static |
+| Puter | yes | no | yes | static |
 | Ollama (local) | yes | no | no (set base URL) | dynamic (fetched from `/api/tags`) |
 | Groq | yes | no | yes | static |
 | OpenRouter | yes | no | yes | dynamic (`:free` models from public endpoint, cached 1h) |
