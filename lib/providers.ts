@@ -55,7 +55,7 @@ export const PROVIDERS: Record<ProviderId, Provider> = {
     capabilities: ["text", "image"],
     baseUrl: "https://api.cloudflare.com/client/v4/accounts",
     requiresKey: false,
-    textModels: [{ id: "@cf/google/gemma-4-26b-a4b-it", label: "Free.ai" }],
+    textModels: [{ id: "@cf/openai/gpt-oss-120b", label: "Free.ai" }],
     imageModels: [
       { id: "@cf/black-forest-labs/flux-1-schnell", label: "Free Image" },
     ],

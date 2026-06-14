@@ -1,4 +1,5 @@
 import type { ChatMessage, ChatMode } from "./ai"
+import { tryEncrypt, tryDecrypt } from "./crypto"
 
 export type Chat = {
   id: string
@@ -13,8 +14,22 @@ export type Chat = {
 const CHATS_KEY = "free-ai:chats"
 const ACTIVE_CHAT_KEY = "free-ai:active-chat"
 const MAX_CHATS = 100
+const UID_KEY = "free-ai:uid"
 
 const changeListeners = new Set<() => void>()
+let chatsCache: Chat[] | null = null
+let encryptPromise: Promise<void> | null = null
+
+export function setLocalUid(uid: string | null) {
+  try {
+    if (uid) sessionStorage.setItem(UID_KEY, uid)
+    else sessionStorage.removeItem(UID_KEY)
+  } catch { /* ignore */ }
+}
+
+function getLocalUid(): string | null {
+  try { return sessionStorage.getItem(UID_KEY) } catch { return null }
+}
 
 export function onChatsChange(cb: () => void): () => void {
   changeListeners.add(cb)
@@ -31,15 +46,32 @@ function isClient(): boolean {
 
 export function getAllChats(): Chat[] {
   if (!isClient()) return []
+  if (chatsCache) return chatsCache
   try {
-    const raw = window.localStorage.getItem(CHATS_KEY)
-    if (!raw) return []
+    const raw = localStorage.getItem(CHATS_KEY)
+    if (!raw) {
+      chatsCache = []
+      return chatsCache
+    }
+    const uid = getLocalUid()
+    if (uid) {
+      try {
+        const decrypted = tryDecrypt(raw, uid)
+        if (typeof decrypted === "string") {
+          const parsed = JSON.parse(decrypted)
+          if (Array.isArray(parsed)) {
+            chatsCache = parsed.filter(isValidChat)
+            return chatsCache
+          }
+        }
+      } catch { /* fall through to plain text */ }
+    }
     const parsed = JSON.parse(raw)
-    if (!Array.isArray(parsed)) return []
-    return parsed.filter(isValidChat)
+    chatsCache = Array.isArray(parsed) ? parsed.filter(isValidChat) : []
   } catch {
-    return []
+    chatsCache = []
   }
+  return chatsCache ?? []
 }
 
 function isValidChat(value: unknown): value is Chat {
@@ -55,14 +87,25 @@ function isValidChat(value: unknown): value is Chat {
   )
 }
 
-function saveChats(chats: Chat[]): void {
-  if (!isClient()) return
+async function persistChats(): Promise<void> {
+  if (!isClient() || !chatsCache) return
   try {
-    window.localStorage.setItem(CHATS_KEY, JSON.stringify(chats))
+    const raw = JSON.stringify(chatsCache)
+    const uid = getLocalUid()
+    if (uid) {
+      const encrypted = await tryEncrypt(raw, uid)
+      localStorage.setItem(CHATS_KEY, encrypted)
+    } else {
+      localStorage.setItem(CHATS_KEY, raw)
+    }
   } catch {
     /* storage may be full or disabled */
   }
   notifyChange()
+}
+
+function schedulePersist() {
+  encryptPromise = Promise.resolve(encryptPromise).then(() => persistChats()).catch(() => {})
 }
 
 export function getChat(id: string): Chat | null {
@@ -101,7 +144,7 @@ export function upsertChat(chat: Chat): void {
       chats.length = MAX_CHATS
     }
   }
-  saveChats(chats)
+  schedulePersist()
 }
 
 export function bumpSyncVersion(chat: Chat): Chat {
@@ -114,16 +157,17 @@ export function getSyncVersion(chat: Chat): number {
 
 export function deleteChat(id: string): void {
   const chats = getAllChats().filter((c) => c.id !== id)
-  saveChats(chats)
-  if (isClient() && window.localStorage.getItem(ACTIVE_CHAT_KEY) === id) {
-    window.localStorage.removeItem(ACTIVE_CHAT_KEY)
+  chatsCache = chats
+  schedulePersist()
+  if (isClient() && localStorage.getItem(ACTIVE_CHAT_KEY) === id) {
+    localStorage.removeItem(ACTIVE_CHAT_KEY)
   }
 }
 
 export function getActiveChatId(): string | null {
   if (!isClient()) return null
   try {
-    return window.localStorage.getItem(ACTIVE_CHAT_KEY)
+    return localStorage.getItem(ACTIVE_CHAT_KEY)
   } catch {
     return null
   }
@@ -133,9 +177,9 @@ export function setActiveChatId(id: string | null): void {
   if (!isClient()) return
   try {
     if (id) {
-      window.localStorage.setItem(ACTIVE_CHAT_KEY, id)
+      localStorage.setItem(ACTIVE_CHAT_KEY, id)
     } else {
-      window.localStorage.removeItem(ACTIVE_CHAT_KEY)
+      localStorage.removeItem(ACTIVE_CHAT_KEY)
     }
   } catch {
     /* ignore */

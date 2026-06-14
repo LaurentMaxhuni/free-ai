@@ -4,7 +4,7 @@ import { useEffect, useState, type MouseEvent } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { signOut, onAuthStateChanged } from "firebase/auth"
-import { Plus, Trash2, MessageSquare, Image as ImageIcon, LogOut } from "lucide-react"
+import { Plus, Trash2, MessageSquare, Image as ImageIcon, LogOut, RefreshCw, Loader2 } from "lucide-react"
 import { auth } from "@/lib/firebase"
 import {
   type Chat,
@@ -14,7 +14,7 @@ import {
   onChatsChange,
   setActiveChatId,
 } from "@/lib/chat-storage"
-import { removeChat } from "@/lib/chat-sync"
+import { removeChat, syncAllChats } from "@/lib/chat-sync"
 import { Logo } from "@/components/logo"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
@@ -46,6 +46,7 @@ export function ChatSidebar({ currentChatId, onSelect, onNewChat, onClose }: Pro
   const [chats, setChats] = useState<Chat[]>([])
   const [user, setUser] = useState<UserSummary | null>(null)
   const [busy, setBusy] = useState(false)
+  const [syncing, setSyncing] = useState(false)
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null)
 
   useEffect(() => {
@@ -119,18 +120,35 @@ export function ChatSidebar({ currentChatId, onSelect, onNewChat, onClose }: Pro
         <Link href="/" onClick={() => onClose?.()} className="block">
           <Logo className="text-xl" />
         </Link>
-        {onClose ? (
+        <div className="flex items-center gap-1">
           <Button
             type="button"
             variant="ghost"
             size="icon-sm"
-            onClick={onClose}
-            className="md:hidden"
-            aria-label="Close sidebar"
+            onClick={async () => {
+              setSyncing(true)
+              try { await syncAllChats() } catch { /* silent */ }
+              setSyncing(false)
+            }}
+            disabled={syncing}
+            aria-label="Sync chats"
+            title="Sync chats"
           >
-            <span aria-hidden className="text-lg leading-none">×</span>
+            {syncing ? <Loader2 className="size-3.5 animate-spin" /> : <RefreshCw className="size-3.5" />}
           </Button>
-        ) : null}
+          {onClose ? (
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-sm"
+              onClick={onClose}
+              className="md:hidden"
+              aria-label="Close sidebar"
+            >
+              <span aria-hidden className="text-lg leading-none">×</span>
+            </Button>
+          ) : null}
+        </div>
       </div>
 
       <div className="px-3 py-3">

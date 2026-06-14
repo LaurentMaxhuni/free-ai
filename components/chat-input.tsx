@@ -118,7 +118,7 @@ export function ChatInput({
 
   return (
     <div className="w-full max-w-3xl mx-auto">
-      <div className="flex items-center gap-1 mb-2">
+      <div className="flex items-center gap-1 mb-2 flex-wrap">
         <button
           type="button"
           onClick={() => setMode("text")}

@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 import { Menu, Sparkles } from "lucide-react"
 import { SettingsDialog } from "@/components/settings-dialog"
-import { getSettings } from "@/lib/settings"
+import { getSettings, saveSettings } from "@/lib/settings"
 import { AuthGuard } from "@/components/auth-guard"
 import { ChatSidebar } from "@/components/chat-sidebar"
 import { ChatMessages } from "@/components/chat-messages"
@@ -38,6 +38,7 @@ import {
 } from "@/lib/ai"
 import { startChatSync, syncChat } from "@/lib/chat-sync"
 import { auth } from "@/lib/firebase"
+import { onAuthStateChanged, type User } from "firebase/auth"
 
 function ChatViewInner() {
   const [activeChat, setActiveChat] = useState<Chat | null>(null)
@@ -48,10 +49,20 @@ function ChatViewInner() {
   const [reasoningContent, setReasoningContent] = useState("")
   const [previewBlocks, setPreviewBlocks] = useState<CodePreviewContent[]>([])
   const [showPreviewPanel, setShowPreviewPanel] = useState(false)
+  const [userName, setUserName] = useState("")
+  const [userAvatar, setUserAvatar] = useState("")
   const abortRef = useRef<AbortController | null>(null)
   const bufferRef = useRef("")
   const reasoningBufferRef = useRef("")
   const rafRef = useRef<number | null>(null)
+
+  useEffect(() => {
+    const unsub = onAuthStateChanged(auth, (user) => {
+      setUserName(user?.displayName ?? "")
+      setUserAvatar(user?.photoURL ?? "")
+    })
+    return unsub
+  }, [])
 
   useEffect(() => {
     startChatSync(auth)
@@ -185,6 +196,10 @@ function ChatViewInner() {
 
       try {
         if (mode === "image") {
+          saveSettings({
+            provider: "freeai",
+            imageModel: "@cf/black-forest-labs/flux-1-schnell",
+          })
           const assistantMessage = await buildImageMessage(content)
           const updated: Chat = {
             ...chat,
@@ -198,7 +213,11 @@ function ChatViewInner() {
           const systemMessages = searchContext
             ? [{ role: "system" as const, content: searchContext }]
             : []
+          const userIntro = userName
+            ? `The user's name is ${userName}. Address them by name naturally.`
+            : ""
           const apiMessages = [
+            ...(userIntro ? [{ role: "system" as const, content: userIntro }] : []),
             ...systemMessages,
             ...chat.messages
               .filter((m) => m.role !== "system")
@@ -387,6 +406,8 @@ function ChatViewInner() {
                 streamingContent={streamingContent}
                 reasoningContent={reasoningContent}
                 onPreview={() => setShowPreviewPanel(true)}
+                userName={userName}
+                userAvatar={userAvatar}
               />
             )}
           </div>

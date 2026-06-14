@@ -7,6 +7,7 @@ export type Settings = {
   textModel: string
   imageModel: string
   visibleProviders: ProviderId[]
+  autoSync: boolean
 }
 
 const ALL_PROVIDERS: ProviderId[] = [
@@ -21,9 +22,10 @@ const ALL_PROVIDERS: ProviderId[] = [
 
 const DEFAULTS: Settings = {
   provider: "freeai",
-  textModel: "@cf/google/gemma-4-26b-a4b-it",
+  textModel: "@cf/openai/gpt-oss-120b",
   imageModel: "@cf/black-forest-labs/flux-1-schnell",
   visibleProviders: [...ALL_PROVIDERS],
+  autoSync: true,
 }
 
 export function getSettings(): Settings {

@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react"
 import { useTheme } from "next-themes"
-import { Settings as SettingsIcon, KeyRound, Cpu, Sun, Moon, Eye, EyeOff, ExternalLink, Trash2, Check, RotateCcw, Loader2 } from "lucide-react"
+import { Settings as SettingsIcon, KeyRound, Cpu, Sun, Moon, Eye, EyeOff, ExternalLink, Trash2, Check, RotateCcw, Loader2, RefreshCw, Cloud, CloudOff } from "lucide-react"
 import {
   Dialog,
   DialogContent,
@@ -50,259 +50,13 @@ type ModelLoadState =
   | { kind: "ready"; models: ModelOption[] }
   | { kind: "error"; message: string }
 
-function ModelsTab({ configured }: { configured: ConfiguredProvider[] | null }) {
+function ModelsTab() {
   const [settings, setSettings] = useState<Settings>(() => getSettings())
-  const provider = PROVIDERS[settings.provider]
-  const isTextCapable = provider.capabilities.includes("text")
-  const isImageCapable = provider.capabilities.includes("image")
-
-  const configuredForProvider = configured?.find((c) => c.provider === settings.provider) ?? null
-  const isDynamicText = Boolean(provider.dynamicModels)
-  const isDynamicImage = Boolean(provider.dynamicImageModels)
-
-  const [textModels, setTextModels] = useState<ModelOption[] | null>(
-    isDynamicText ? null : provider.textModels
-  )
-  const [textState, setTextState] = useState<ModelLoadState>({ kind: "idle" })
-
-  const [imageModels, setImageModels] = useState<ModelOption[] | null>(
-    isDynamicImage ? null : provider.imageModels
-  )
-  const [imageState, setImageState] = useState<ModelLoadState>({ kind: "idle" })
-
-  const loadDynamic = useCallback(
-    async (force = false) => {
-      if (!provider.dynamicModels) return
-      setTextState({ kind: "loading" })
-      setTextModels(null)
-      try {
-        if (provider.dynamicModels.kind === "ollama") {
-          const baseUrl = configuredForProvider?.baseUrl ?? provider.baseUrl
-          const models = await fetchOllamaModels(baseUrl, force)
-          setTextModels(models)
-          setTextState({ kind: "ready", models })
-        } else if (provider.dynamicModels.kind === "openrouter-free") {
-          const models = await fetchOpenRouterFreeModels({ force })
-          setTextModels(models)
-          setTextState({ kind: "ready", models })
-        } else if (provider.dynamicModels.kind === "groq") {
-          const models = await fetchGroqModels({ force })
-          setTextModels(models)
-          setTextState({ kind: "ready", models })
-        } else {
-          setTextModels(provider.textModels)
-          setTextState({ kind: "ready", models: provider.textModels })
-        }
-      } catch (err) {
-        const message = err instanceof Error ? err.message : "Failed to load models"
-        setTextState({ kind: "error", message })
-      }
-    },
-    [provider, configuredForProvider]
-  )
-
-  const loadDynamicImageModels = useCallback(
-    async (force = false) => {
-      if (!provider.dynamicImageModels) return
-      setImageState({ kind: "loading" })
-      setImageModels(null)
-      try {
-        if (provider.dynamicImageModels.kind === "huggingface") {
-          const models = await fetchHuggingFaceModels({ force })
-          setImageModels(models)
-          setImageState({ kind: "ready", models })
-        } else {
-          setImageModels(provider.imageModels)
-          setImageState({ kind: "ready", models: provider.imageModels })
-        }
-      } catch (err) {
-        const message = err instanceof Error ? err.message : "Failed to load image models"
-        setImageState({ kind: "error", message })
-      }
-    },
-    [provider]
-  )
-
-  // Initial load + reload when provider changes (only for dynamic providers)
-  useEffect(() => {
-    if (isDynamicText) {
-      void loadDynamic(false)
-    } else {
-      setTextModels(provider.textModels)
-      setTextState({ kind: "ready", models: provider.textModels })
-    }
-  }, [settings.provider, isDynamicText, loadDynamic, provider])
-
-  useEffect(() => {
-    if (isDynamicImage) {
-      void loadDynamicImageModels(false)
-    } else {
-      setImageModels(provider.imageModels)
-      setImageState({ kind: "ready", models: provider.imageModels })
-    }
-  }, [settings.provider, isDynamicImage, loadDynamicImageModels, provider])
-
-  const setField = <K extends keyof Settings>(key: K, value: Settings[K]) => {
-    const next = { ...settings, [key]: value }
-    setSettings(next)
-    saveSettings(next)
-  }
-
-  const onProviderChange = (id: ProviderId) => {
-    const p = PROVIDERS[id]
-    const next: Settings = {
-      ...settings,
-      provider: id,
-      textModel: p.textModels[0]?.id ?? settings.textModel,
-      imageModel: p.imageModels[0]?.id ?? settings.imageModel,
-    }
-    setSettings(next)
-    saveSettings(next)
-  }
 
   return (
     <div className="space-y-4">
-      <div className="space-y-1.5">
-        <Label htmlFor="provider">Provider</Label>
-        <Select
-          value={settings.provider}
-          onValueChange={(value) => {
-            if (value) onProviderChange(value as ProviderId)
-          }}
-        >
-          <SelectTrigger id="provider" variant="form">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {PROVIDER_LIST.map((p) => (
-              <SelectItem key={p.id} value={p.id}>
-                {p.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <p className="text-xs text-muted-foreground">{provider.description}</p>
-      </div>
-
-      {isTextCapable ? (
-        <div className="space-y-1.5">
-          <div className="flex items-center justify-between">
-            <Label htmlFor="text-model">Text model</Label>
-            {isDynamicText ? (
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={() => loadDynamic(true)}
-                disabled={textState.kind === "loading"}
-                className="h-6 px-2 text-xs"
-              >
-                {textState.kind === "loading" ? (
-                  <Loader2 className="size-3 animate-spin" />
-                ) : (
-                  <RotateCcw className="size-3" />
-                )}
-                Refresh
-              </Button>
-            ) : null}
-          </div>
-          {isDynamicText && textState.kind === "error" ? (
-            <div className="rounded-md border border-destructive/30 bg-destructive/5 p-3 text-xs text-destructive">
-              <p>{textState.message}</p>
-              {provider.dynamicModels?.kind === "ollama" ? (
-                <p className="mt-1 text-muted-foreground">
-                  Check the Ollama URL in <span className="font-medium">API Keys</span>.
-                </p>
-              ) : provider.dynamicModels?.kind === "groq" ? (
-                <p className="mt-1 text-muted-foreground">
-                  Make sure your Groq API key is set in <span className="font-medium">API Keys</span>.
-                </p>
-              ) : null}
-            </div>
-          ) : null}
-          <Select
-            value={settings.textModel}
-            onValueChange={(value) => {
-              if (value) setField("textModel", value)
-            }}
-            disabled={!textModels || textModels.length === 0}
-          >
-            <SelectTrigger id="text-model" variant="form">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {textModels?.map((m) => (
-                <SelectItem key={m.id} value={m.id}>
-                  {m.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          {isDynamicText ? (
-            <p className="text-xs text-muted-foreground">
-              {provider.dynamicModels?.kind === "ollama"
-                ? "Pulled live from your local Ollama instance."
-                : "Fetched from the provider's public catalog."}
-            </p>
-          ) : null}
-        </div>
-      ) : null}
-
-      {isImageCapable ? (
-        <div className="space-y-1.5">
-          <div className="flex items-center justify-between">
-            <Label htmlFor="image-model">Image model</Label>
-            {isDynamicImage ? (
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={() => loadDynamicImageModels(true)}
-                disabled={imageState.kind === "loading"}
-                className="h-6 px-2 text-xs"
-              >
-                {imageState.kind === "loading" ? (
-                  <Loader2 className="size-3 animate-spin" />
-                ) : (
-                  <RotateCcw className="size-3" />
-                )}
-                Refresh
-              </Button>
-            ) : null}
-          </div>
-          {isDynamicImage && imageState.kind === "error" ? (
-            <div className="rounded-md border border-destructive/30 bg-destructive/5 p-3 text-xs text-destructive">
-              <p>{imageState.message}</p>
-            </div>
-          ) : null}
-          <Select
-            value={settings.imageModel}
-            onValueChange={(value) => {
-              if (value) setField("imageModel", value)
-            }}
-            disabled={!imageModels || imageModels.length === 0}
-          >
-            <SelectTrigger id="image-model" variant="form">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {imageModels?.map((m) => (
-                <SelectItem key={m.id} value={m.id}>
-                  {m.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          {isDynamicImage ? (
-            <p className="text-xs text-muted-foreground">
-              Pulled from the Hugging Face model catalog.
-            </p>
-          ) : null}
-        </div>
-      ) : null}
-
-      <div className="space-y-2 pt-2 border-t">
-        <h4 className="text-sm font-medium">Quick selector providers</h4>
+      <div className="space-y-2">
+        <h4 className="text-sm font-medium">Visible providers</h4>
         <p className="text-xs text-muted-foreground">
           Choose which providers appear in the chat input model dropdown.
         </p>
@@ -332,8 +86,92 @@ function ModelsTab({ configured }: { configured: ConfiguredProvider[] | null }) 
       </div>
 
       <p className="text-xs text-muted-foreground">
-        Add API keys in the <span className="font-medium">API Keys</span> tab.
+        Select text and image models directly from the chat input dropdown — they automatically set the active provider.
       </p>
+    </div>
+  )
+}
+
+function SyncTab() {
+  const [settings, setSettings] = useState<Settings>(() => getSettings())
+  const [syncing, setSyncing] = useState(false)
+  const [syncResult, setSyncResult] = useState<"idle" | "done" | "error">("idle")
+
+  const handleManualSync = async () => {
+    setSyncing(true)
+    setSyncResult("idle")
+    try {
+      const { syncAllChats } = await import("@/lib/chat-sync")
+      await syncAllChats()
+      setSyncResult("done")
+    } catch {
+      setSyncResult("error")
+    } finally {
+      setSyncing(false)
+    }
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="space-y-1.5">
+        <div className="flex items-center justify-between">
+          <Label htmlFor="auto-sync">Auto-sync chats</Label>
+          <button
+            type="button"
+            role="switch"
+            id="auto-sync"
+            aria-checked={settings.autoSync}
+            onClick={() => {
+              const next = !settings.autoSync
+              saveSettings({ autoSync: next })
+              setSettings((prev) => ({ ...prev, autoSync: next }))
+            }}
+            className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors ${
+              settings.autoSync ? "bg-primary" : "bg-muted"
+            }`}
+          >
+            <span
+              className={`pointer-events-none inline-block size-4 rounded-full bg-white shadow-sm ring-0 transition-transform ${
+                settings.autoSync ? "translate-x-4" : "translate-x-0"
+              }`}
+            />
+          </button>
+        </div>
+        <p className="text-xs text-muted-foreground">
+          {settings.autoSync
+            ? "Chats are automatically saved to your account in real-time."
+            : "Auto-sync is disabled. Use the button below to manually sync."}
+        </p>
+      </div>
+
+      <div className="space-y-1.5">
+        <Label>Manual sync</Label>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={handleManualSync}
+          disabled={syncing}
+          className="gap-2"
+        >
+          {syncing ? (
+            <Loader2 className="size-3.5 animate-spin" />
+          ) : (
+            <RefreshCw className="size-3.5" />
+          )}
+          {syncing ? "Syncing..." : "Sync all chats now"}
+        </Button>
+        {syncResult === "done" && (
+          <p className="text-xs text-green-600 flex items-center gap-1">
+            <Check className="size-3" /> All chats synced successfully.
+          </p>
+        )}
+        {syncResult === "error" && (
+          <p className="text-xs text-destructive">
+            Sync failed. Make sure you're signed in and try again.
+          </p>
+        )}
+      </div>
     </div>
   )
 }
@@ -654,18 +492,22 @@ export function SettingsDialog() {
         <DialogHeader>
           <DialogTitle>Settings</DialogTitle>
           <DialogDescription>
-            Choose a provider and model, then add your API keys.
+            Manage providers, API keys, appearance, and chat sync.
           </DialogDescription>
         </DialogHeader>
 
         {error ? (
           <p className="text-sm text-destructive">{error}</p>
         ) : (
-          <Tabs defaultValue="models">
+          <Tabs defaultValue="providers">
             <TabsList>
-              <TabsTrigger value="models">
+              <TabsTrigger value="providers">
                 <Cpu className="size-3.5 mr-1.5" />
-                Models
+                Providers
+              </TabsTrigger>
+              <TabsTrigger value="sync">
+                <RefreshCw className="size-3.5 mr-1.5" />
+                Sync
               </TabsTrigger>
               <TabsTrigger value="appearance">
                 <Sun className="size-3.5 mr-1.5" />
@@ -676,8 +518,11 @@ export function SettingsDialog() {
                 API Keys
               </TabsTrigger>
             </TabsList>
-            <TabsContent value="models">
-              <ModelsTab configured={configured} />
+            <TabsContent value="providers">
+              <ModelsTab />
+            </TabsContent>
+            <TabsContent value="sync">
+              <SyncTab />
             </TabsContent>
             <TabsContent value="appearance">
               <AppearanceTab />

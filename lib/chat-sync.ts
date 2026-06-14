@@ -16,10 +16,12 @@ import {
   getAllChats,
   bumpSyncVersion,
   getSyncVersion,
+  setLocalUid,
   type Chat,
 } from "./chat-storage"
 import { onAuthStateChanged, type Auth } from "firebase/auth"
 import { encrypt, decrypt } from "./crypto"
+import { getSettings } from "./settings"
 
 let unsubscribe: (() => void) | null = null
 let currentUid: string | null = null
@@ -38,10 +40,12 @@ export function startChatSync(auth: Auth | null) {
   onAuthStateChanged(auth, (user) => {
     if (user && user.uid !== currentUid) {
       currentUid = user.uid
+      setLocalUid(user.uid)
       initListener(user.uid)
       migrateLocalChats(user.uid)
     } else if (!user) {
       currentUid = null
+      setLocalUid(null)
       stopListener()
       clearRetries()
     }
@@ -134,6 +138,7 @@ let syncTimer: ReturnType<typeof setTimeout> | null = null
 
 export async function syncChat(chat: Chat) {
   if (!currentUid) return
+  if (!getSettings().autoSync) return
   pendingSync = chat
   if (syncTimer) return
   syncTimer = setTimeout(async () => {
@@ -165,4 +170,22 @@ export function removeChat(chatId: string) {
   const db = getFirestoreDB()
   if (!db) return
   deleteDoc(doc(db, "users", currentUid, "chats", chatId)).catch(() => {})
+}
+
+export async function syncAllChats(): Promise<void> {
+  if (!currentUid) return
+  const db = getFirestoreDB()
+  if (!db) return
+  const local = getAllChats()
+  syncInProgress = true
+  try {
+    for (const chat of local) {
+      const bumped = bumpSyncVersion(chat)
+      upsertChat(bumped)
+      const encrypted = await encryptChat(bumped)
+      await setDoc(doc(db, "users", currentUid, "chats", bumped.id), encrypted)
+    }
+  } finally {
+    syncInProgress = false
+  }
 }

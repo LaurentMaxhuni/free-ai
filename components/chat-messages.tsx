@@ -9,10 +9,12 @@ import { MarkdownRenderer } from "@/components/markdown-renderer"
 
 type Props = {
   messages: ChatMessage[]
-  isGenerating: boolean
+  isGenerating?: boolean
   streamingContent?: string
   reasoningContent?: string
   onPreview?: () => void
+  userName?: string
+  userAvatar?: string
 }
 
 function CopyButton({ content }: { content: string }) {
@@ -97,7 +99,7 @@ function MessageBubble({ message, isStreaming, onPreview }: { message: ChatMessa
   if (message.role === "assistant") {
     return (
       <div className="rounded-2xl bg-muted/60 px-4 py-2.5 max-w-2xl">
-        <div className="text-sm leading-relaxed break-words prose prose-sm dark:prose-invert prose-p:my-1 prose-pre:my-2 prose-ul:my-1 prose-ol:my-1 prose-li:my-0 max-w-none">
+        <div className="text-sm leading-relaxed break-words overflow-x-hidden prose prose-sm dark:prose-invert prose-p:my-1 prose-pre:my-2 prose-ul:my-1 prose-ol:my-1 prose-li:my-0 max-w-none">
           <MarkdownRenderer content={message.content} onPreview={onPreview} />
           {isStreaming && (
             <span className="inline-block w-2 h-4 ml-0.5 bg-foreground/60 animate-pulse motion-reduce:animate-none rounded-sm align-text-bottom" />
@@ -213,7 +215,7 @@ function ThinkingBlock({ content }: { content: string }) {
   )
 }
 
-export function ChatMessages({ messages, isGenerating, streamingContent, reasoningContent, onPreview }: Props) {
+export function ChatMessages({ messages, isGenerating, streamingContent, reasoningContent, onPreview, userName = "", userAvatar = "" }: Props) {
   const endRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -223,7 +225,7 @@ export function ChatMessages({ messages, isGenerating, streamingContent, reasoni
   const hasStreamContent = isGenerating && streamingContent && streamingContent.length > 0
 
   return (
-    <div className="max-w-3xl mx-auto px-4 py-8 space-y-6">
+    <div className="max-w-3xl mx-auto px-4 py-8 space-y-6 overflow-x-hidden">
       {messages.map((message, index) => {
         const isUser = message.role === "user"
         const isAssistantImage =
@@ -241,14 +243,20 @@ export function ChatMessages({ messages, isGenerating, streamingContent, reasoni
           >
             <div
               className={cn(
-                "shrink-0 size-8 rounded-full flex items-center justify-center",
+                "shrink-0 size-8 rounded-full flex items-center justify-center overflow-hidden",
                 isUser
                   ? "bg-primary text-primary-foreground"
                   : "bg-muted text-primary"
               )}
               aria-hidden
             >
-              {isUser ? <User className="size-4" /> : <Sparkles className="size-4" />}
+              {isUser && userAvatar ? (
+                <img src={userAvatar} alt="" className="size-full object-cover" referrerPolicy="no-referrer" />
+              ) : isUser ? (
+                <User className="size-4" />
+              ) : (
+                <Sparkles className="size-4" />
+              )}
             </div>
             <div
               className={cn(
@@ -262,7 +270,7 @@ export function ChatMessages({ messages, isGenerating, streamingContent, reasoni
                   isUser ? "flex-row-reverse" : "flex-row"
                 )}
               >
-                <span>{isUser ? "You" : "Free.ai"}</span>
+                <span>{isUser ? (userName || "You") : "Free.ai"}</span>
                 {isAssistantImage ? (
                   <span className="inline-flex items-center gap-1 text-[10px] uppercase tracking-wider">
                     <ImageIcon className="size-3" />
@@ -296,7 +304,7 @@ export function ChatMessages({ messages, isGenerating, streamingContent, reasoni
             <div className="text-xs text-muted-foreground mb-1 px-1">Free.ai</div>
             {reasoningContent ? <ThinkingBlock content={reasoningContent} /> : null}
             <div className="rounded-2xl bg-muted/60 px-4 py-2.5 max-w-2xl">
-              <div className="text-sm leading-relaxed break-words prose prose-sm dark:prose-invert prose-p:my-1 prose-pre:my-2 prose-ul:my-1 prose-ol:my-1 prose-li:my-0 max-w-none">
+              <div className="text-sm leading-relaxed break-words overflow-x-hidden prose prose-sm dark:prose-invert prose-p:my-1 prose-pre:my-2 prose-ul:my-1 prose-ol:my-1 prose-li:my-0 max-w-none">
                 <MarkdownRenderer content={streamingContent} onPreview={onPreview} />
                 <span className="inline-block w-2 h-4 ml-0.5 bg-foreground/60 animate-pulse motion-reduce:animate-none rounded-sm align-text-bottom" />
               </div>

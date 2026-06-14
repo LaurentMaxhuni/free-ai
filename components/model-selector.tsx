@@ -86,8 +86,13 @@ export function ModelSelector({ mode }: { mode: ChatMode }) {
   const currentLabel = allModels.find((m) => m.id === currentModelId)?.label ?? currentModelId
 
   const selectModel = (modelId: string) => {
-    if (mode === "text") saveSettings({ textModel: modelId })
-    else saveSettings({ imageModel: modelId })
+    const p = providerGroups.find((pg) => {
+      const models = mode === "text" ? pg.textModels : pg.imageModels
+      return models.some((m) => m.id === modelId)
+    })
+    const patch: Record<string, string> = { [mode === "text" ? "textModel" : "imageModel"]: modelId }
+    if (p) patch.provider = p.id
+    saveSettings(patch as any)
     setOpen(false)
   }
 
