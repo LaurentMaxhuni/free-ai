@@ -3,7 +3,7 @@
 import DotPattern from "@/components/ui/dot-pattern";
 import Particles from "@/components/ui/particles";
 import { cn } from "@/lib/utils";
-import { useTheme } from "next-themes";
+import { useTheme } from "@/components/theme-provider";
 
 export const BackgroundPattern = () => {
   const { resolvedTheme } = useTheme();

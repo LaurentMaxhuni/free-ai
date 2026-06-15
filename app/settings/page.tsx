@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
-import { useTheme } from "next-themes"
+import { useTheme } from "@/components/theme-provider"
 import { ArrowLeft, LogOut, Cpu, RefreshCw, Sun, Moon, KeyRound, Eye, EyeOff, ExternalLink, Trash2, Check, RotateCcw, Loader2, Palette } from "lucide-react"
 import { ThemeScope } from "@/components/theme-scope"
 import { useThemeColor } from "@/components/color-theme-provider"
