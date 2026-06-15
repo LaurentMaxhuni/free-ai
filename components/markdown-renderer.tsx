@@ -1,10 +1,44 @@
 "use client"
 
-import { useCallback, useMemo, useRef, useState } from "react"
+import { memo, useCallback, useMemo, useRef, useState, useSyncExternalStore } from "react"
 import { motion } from "motion/react"
 import ReactMarkdown from "react-markdown"
 import remarkGfm from "remark-gfm"
+import { Highlight, themes } from "prism-react-renderer"
 import { Check, Copy, Eye, Code, ExternalLink, Maximize2, Minimize2 } from "lucide-react"
+
+const DARK_MODE_SUPPORTED_LANGUAGES = [
+  "markup", "html", "xml", "svg", "mathml",
+  "css", "clike", "javascript", "js", "jsx", "tsx", "typescript", "ts",
+  "bash", "shell", "sh", "powershell", "ps1", "batch",
+  "c", "cpp", "csharp", "cs", "dotnet",
+  "go", "graphql", "gql",
+  "haskell", "hs",
+  "java", "json", "kotlin", "kt", "kts",
+  "latex", "tex", "less", "lisp", "lua",
+  "makefile", "markdown", "md",
+  "matlab", "objectivec", "objc",
+  "perl", "php", "python", "py", "r",
+  "ruby", "rb", "rust", "rs", "sass", "scss", "scala",
+  "sql", "swift", "tcl",
+  "toml", "yaml", "yml", "wasm",
+  "diff", "docker", "dockerfile", "ignore", "gitignore",
+  "regex", "uri", "url",
+]
+
+function subscribeDarkMode(cb: () => void) {
+  const mq = window.matchMedia("(prefers-color-scheme: dark)")
+  mq.addEventListener("change", cb)
+  return () => mq.removeEventListener("change", cb)
+}
+
+function getDarkMode() {
+  if (typeof window === "undefined") return true
+  return (
+    document.documentElement.classList.contains("dark") ||
+    window.matchMedia("(prefers-color-scheme: dark)").matches
+  )
+}
 
 export type CodePreviewContent = {
   type: "html" | "css" | "js"
@@ -18,13 +52,61 @@ type CodeBlockProps = {
   onPreview?: () => void
 }
 
-function CodeBlock({ language, children, onPreview }: CodeBlockProps) {
+function getPrismLang(lang: string): string {
+  const map: Record<string, string> = {
+    sh: "bash", shell: "bash",
+    ps1: "powershell", powershell: "powershell",
+    py: "python", python: "python",
+    rb: "ruby", ruby: "ruby",
+    rs: "rust", rust: "rust",
+    ts: "typescript", typescript: "typescript",
+    tsx: "tsx", jsx: "jsx",
+    js: "javascript", javascript: "javascript",
+    cs: "csharp", "c#": "csharp", csharp: "csharp",
+    cpp: "cpp", "c++": "cpp", "cc": "cpp", "cxx": "cpp", "hpp": "cpp",
+    h: "c", c: "c",
+    go: "go", golang: "go",
+    kt: "kotlin", kts: "kotlin", kotlin: "kotlin",
+    swift: "swift",
+    scala: "scala",
+    hs: "haskell", haskell: "haskell",
+    lua: "lua",
+    php: "php",
+    r: "r",
+    sql: "sql",
+    graphql: "graphql", gql: "graphql",
+    yml: "yaml", yaml: "yaml",
+    toml: "toml",
+    md: "markdown", markdown: "markdown",
+    html: "html", htm: "html", xml: "xml", svg: "svg",
+    css: "css", scss: "scss", sass: "sass", less: "less",
+    json: "json",
+    diff: "diff",
+    docker: "docker", dockerfile: "docker",
+    makefile: "makefile", make: "makefile",
+    gitignore: "ignore", ignore: "ignore",
+    wasm: "wasm",
+    latex: "latex", tex: "latex",
+    matlab: "matlab",
+    perl: "perl",
+    lisp: "lisp",
+    tcl: "tcl",
+    batch: "batch",
+    clike: "clike",
+    objectivec: "objectivec", objc: "objectivec",
+    regex: "regex",
+  }
+  return map[lang] ?? lang
+}
+
+const CodeBlock = memo(function CodeBlock({ language, children, onPreview }: CodeBlockProps) {
   const [copied, setCopied] = useState(false)
   const [showPreview, setShowPreview] = useState(false)
   const [expanded, setExpanded] = useState(false)
-  const codeRef = useRef<HTMLElement>(null)
+  const isDark = useSyncExternalStore(subscribeDarkMode, getDarkMode, () => true)
 
   const lang = (language ?? "").toLowerCase()
+  const prismLang = DARK_MODE_SUPPORTED_LANGUAGES.includes(getPrismLang(lang)) ? getPrismLang(lang) : "clike"
   const isPreviewable = ["html", "css", "javascript", "js", "htm", "jsx", "tsx"].includes(lang)
 
   const handleCopy = useCallback(async () => {
@@ -52,8 +134,8 @@ function CodeBlock({ language, children, onPreview }: CodeBlockProps) {
   }, [isPreviewable, lang, children])
 
   return (
-    <div className="group/code relative my-3 rounded-3xl border bg-muted/80 overflow-hidden">
-      <div className="flex items-center justify-between px-4 py-2 border-b border-border bg-muted/50">
+    <div className="group/code relative my-3 rounded-3xl border overflow-hidden">
+      <div className="flex items-center justify-between px-4 py-2 border-b bg-muted/50">
         <div className="flex items-center gap-2">
           <span className="text-xs text-muted-foreground font-mono">
             {lang || "code"}
@@ -70,7 +152,7 @@ function CodeBlock({ language, children, onPreview }: CodeBlockProps) {
                     setShowPreview((v) => !v)
                   }
                 }}
-              className="flex items-center gap-1 text-xs px-2 py-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
+              className="flex items-center gap-1 text-xs px-2 py-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors cursor-pointer"
               aria-label="Open preview"
             >
               <Eye className="size-3" />
@@ -81,7 +163,7 @@ function CodeBlock({ language, children, onPreview }: CodeBlockProps) {
             <button
               type="button"
               onClick={() => setShowPreview((v) => !v)}
-              className="flex items-center gap-1 text-xs px-2 py-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
+              className="flex items-center gap-1 text-xs px-2 py-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors cursor-pointer"
               aria-label={showPreview ? "Show code" : "Show inline preview"}
             >
               {showPreview ? <Code className="size-3" /> : <ExternalLink className="size-3" />}
@@ -91,7 +173,7 @@ function CodeBlock({ language, children, onPreview }: CodeBlockProps) {
           <button
             type="button"
             onClick={() => setExpanded((v) => !v)}
-            className="text-xs px-1.5 py-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
+            className="text-xs px-1.5 py-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors cursor-pointer"
             aria-label={expanded ? "Collapse" : "Expand"}
           >
             {expanded ? <Minimize2 className="size-3" /> : <Maximize2 className="size-3" />}
@@ -99,7 +181,7 @@ function CodeBlock({ language, children, onPreview }: CodeBlockProps) {
           <button
             type="button"
             onClick={handleCopy}
-            className="flex items-center gap-1 text-xs px-2 py-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
+            className="flex items-center gap-1 text-xs px-2 py-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors cursor-pointer"
             aria-label={copied ? "Copied" : "Copy code"}
           >
             {copied ? <Check className="size-3" /> : <Copy className="size-3" />}
@@ -117,16 +199,24 @@ function CodeBlock({ language, children, onPreview }: CodeBlockProps) {
           transition={{ duration: 0.25, ease: "easeInOut" }}
           className="overflow-hidden"
         >
-          <pre className="p-4 overflow-x-auto text-sm leading-relaxed h-full">
-            <code ref={codeRef} className={`language-${lang || "text"}`}>
-              {children}
-            </code>
-          </pre>
+          <Highlight code={children.trimEnd()} language={prismLang} theme={isDark ? themes.nightOwl : themes.oneLight}>
+            {({ className, style, tokens, getLineProps, getTokenProps }) => (
+              <pre className={`${className} p-4 overflow-x-auto text-sm leading-relaxed h-full`} style={style}>
+                {tokens.map((line, i) => (
+                  <div key={i} {...getLineProps({ line })}>
+                    {line.map((token, key) => (
+                      <span key={key} {...getTokenProps({ token })} />
+                    ))}
+                  </div>
+                ))}
+              </pre>
+            )}
+          </Highlight>
         </motion.div>
       )}
     </div>
   )
-}
+})
 
 function CodePreview({
   type,

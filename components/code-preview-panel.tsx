@@ -84,7 +84,7 @@ export function CodePreviewPanel({ blocks, onClose }: Props) {
   if (blocks.length === 0) return null
 
   return (
-    <div className="flex flex-col h-full border-l bg-background/95 backdrop-blur">
+    <div className="flex flex-col h-full bg-background">
       <div className="flex items-center justify-between px-4 py-2.5 border-b shrink-0">
         <div className="flex items-center gap-3">
           <span className="text-xs font-medium text-muted-foreground">Live Preview</span>

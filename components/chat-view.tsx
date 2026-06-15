@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/sheet"
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden"
 import { CodePreviewPanel } from "@/components/code-preview-panel"
+import { ResizablePanel } from "@/components/ui/resizable-panel"
 import { extractCodeBlocks, type CodePreviewContent } from "@/components/markdown-renderer"
 import {
   type Chat,
@@ -391,24 +392,30 @@ function ChatViewInner() {
         </SheetContent>
       </Sheet>
 
-      <div className="sm:hidden">
-        {previewBlocks.length > 0 && (
-          <Sheet open={showPreviewPanel} onOpenChange={setShowPreviewPanel}>
-            <VisuallyHidden>
-              <SheetTitle>Code preview</SheetTitle>
-            </VisuallyHidden>
-            <SheetContent side="right" className="w-full p-0">
+      <main className="flex-1 flex min-w-0">
+        {showPreviewPanel && previewBlocks.length > 0 && (
+          <div className="sm:hidden flex flex-col flex-1 min-w-0">
+            <header className="h-14 border-b flex items-center gap-2 px-4 shrink-0">
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon-sm"
+                onClick={() => setShowPreviewPanel(false)}
+                aria-label="Back to chat"
+              >
+                <span className="text-sm">← Back</span>
+              </Button>
+              <span className="text-xs font-medium text-muted-foreground">Preview</span>
+            </header>
+            <div className="flex-1 overflow-hidden">
               <CodePreviewPanel
                 blocks={previewBlocks}
                 onClose={() => setShowPreviewPanel(false)}
               />
-            </SheetContent>
-          </Sheet>
+            </div>
+          </div>
         )}
-      </div>
-
-      <main className="flex-1 flex min-w-0">
-        <div className="flex flex-col flex-1 min-w-0">
+        <div className={`flex flex-col flex-1 min-w-0 ${showPreviewPanel ? "hidden sm:flex" : ""}`}>
           <header className="h-14 border-b flex items-center justify-between gap-2 px-4 shrink-0 bg-background/80 backdrop-blur">
             <div className="flex items-center gap-2 min-w-0">
               <Button
@@ -462,12 +469,14 @@ function ChatViewInner() {
         </div>
 
         {showPreviewPanel && previewBlocks.length > 0 && (
-          <aside className="hidden sm:flex w-1/2 shrink-0 border-l">
-            <CodePreviewPanel
-              blocks={previewBlocks}
-              onClose={() => setShowPreviewPanel(false)}
-            />
-          </aside>
+          <ResizablePanel defaultWidth={480} minWidth={320} maxWidth={800}>
+            <div className="hidden sm:flex flex-col h-full">
+              <CodePreviewPanel
+                blocks={previewBlocks}
+                onClose={() => setShowPreviewPanel(false)}
+              />
+            </div>
+          </ResizablePanel>
         )}
       </main>
     </div>

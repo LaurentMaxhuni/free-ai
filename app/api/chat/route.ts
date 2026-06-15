@@ -138,7 +138,7 @@ async function streamOpenAICompatible(
       "Content-Type": "application/json",
       ...(apiKey ? { Authorization: `Bearer ${apiKey}` } : {}),
     },
-    body: JSON.stringify({ model, messages, stream: true, max_tokens: 4096 }),
+    body: JSON.stringify({ model, messages, stream: true, max_tokens: 8192 }),
   })
 
   if (!response.ok) {
