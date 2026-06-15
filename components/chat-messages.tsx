@@ -15,6 +15,7 @@ type Props = {
   onPreview?: () => void
   userName?: string
   userAvatar?: string
+  modelLabel?: string
 }
 
 function CopyButton({ content }: { content: string }) {
@@ -215,7 +216,7 @@ function ThinkingBlock({ content }: { content: string }) {
   )
 }
 
-export function ChatMessages({ messages, isGenerating, streamingContent, reasoningContent, onPreview, userName = "", userAvatar = "" }: Props) {
+export function ChatMessages({ messages, isGenerating, streamingContent, reasoningContent, onPreview, userName = "", userAvatar = "", modelLabel }: Props) {
   const endRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -270,7 +271,7 @@ export function ChatMessages({ messages, isGenerating, streamingContent, reasoni
                   isUser ? "flex-row-reverse" : "flex-row"
                 )}
               >
-                <span>{isUser ? (userName || "You") : "Free.ai"}</span>
+                <span>{isUser ? (userName || "You") : modelLabel ? `${modelLabel}` : "Free.ai"}</span>
                 {isAssistantImage ? (
                   <span className="inline-flex items-center gap-1 text-[10px] uppercase tracking-wider">
                     <ImageIcon className="size-3" />
@@ -301,7 +302,7 @@ export function ChatMessages({ messages, isGenerating, streamingContent, reasoni
             <Sparkles className="size-4" />
           </div>
           <div className="flex flex-col min-w-0 items-start">
-            <div className="text-xs text-muted-foreground mb-1 px-1">Free.ai</div>
+            <div className="text-xs text-muted-foreground mb-1 px-1">{modelLabel ?? "Free.ai"}</div>
             {reasoningContent ? <ThinkingBlock content={reasoningContent} /> : null}
             <div className="rounded-2xl bg-muted/60 px-4 py-2.5 max-w-2xl">
               <div className="text-sm leading-relaxed break-words overflow-x-hidden prose prose-sm dark:prose-invert prose-p:my-1 prose-pre:my-2 prose-ul:my-1 prose-ol:my-1 prose-li:my-0 max-w-none">
@@ -325,7 +326,7 @@ export function ChatMessages({ messages, isGenerating, streamingContent, reasoni
             <Sparkles className="size-4 animate-pulse motion-reduce:animate-none" />
           </div>
           <div className="flex flex-col min-w-0">
-            <div className="text-xs text-muted-foreground mb-1 px-1">Free.ai</div>
+            <div className="text-xs text-muted-foreground mb-1 px-1">{modelLabel ?? "Free.ai"}</div>
             <TypingIndicator />
           </div>
         </motion.div>

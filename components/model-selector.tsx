@@ -6,14 +6,22 @@ import { getSettings, saveSettings } from "@/lib/settings"
 import { PROVIDERS, type ProviderId, type ModelOption } from "@/lib/providers"
 import { cn } from "@/lib/utils"
 import type { ChatMode } from "@/lib/ai"
+import { listConfiguredKeys } from "@/lib/keys-api"
 
-export function ModelSelector({ mode }: { mode: ChatMode }) {
+export function ModelSelector({ mode, onModelChange }: { mode: ChatMode; onModelChange?: () => void }) {
   const [open, setOpen] = useState(false)
   const [dynamicModels, setDynamicModels] = useState<Record<string, ModelOption[]>>({})
   const [loading, setLoading] = useState<Record<string, boolean>>({})
+  const [configuredProviders, setConfiguredProviders] = useState<Set<ProviderId> | null>(null)
   const settings = getSettings()
   const currentModelId = mode === "text" ? settings.textModel : settings.imageModel
   const dropdownRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    listConfiguredKeys()
+      .then((keys) => setConfiguredProviders(new Set(keys.filter((k) => k.hasApiKey).map((k) => k.provider))))
+      .catch(() => setConfiguredProviders(new Set()))
+  }, [])
 
   const visibleProviderIds = settings.visibleProviders ?? Object.keys(PROVIDERS)
 
@@ -21,6 +29,7 @@ export function ModelSelector({ mode }: { mode: ChatMode }) {
     .map((id) => PROVIDERS[id as ProviderId])
     .filter(Boolean)
     .filter((p) => p.capabilities.includes(mode))
+    .filter((p) => !p.requiresKey || configuredProviders?.has(p.id))
     .filter((p) =>
       mode === "text"
         ? p.textModels.length > 0 || p.dynamicModels
@@ -62,7 +71,7 @@ export function ModelSelector({ mode }: { mode: ChatMode }) {
         setLoading((prev) => ({ ...prev, [key]: false }))
       }
     })
-  }, [mode])
+  }, [mode, configuredProviders])
 
   useEffect(() => {
     if (!open) return
@@ -87,13 +96,17 @@ export function ModelSelector({ mode }: { mode: ChatMode }) {
 
   const selectModel = (modelId: string) => {
     const p = providerGroups.find((pg) => {
-      const models = mode === "text" ? pg.textModels : pg.imageModels
+      const key = `${pg.id}-${mode}`
+      const models = mode === "text"
+        ? (pg.textModels.length ? pg.textModels : dynamicModels[key] ?? [])
+        : (pg.imageModels.length ? pg.imageModels : dynamicModels[key] ?? [])
       return models.some((m) => m.id === modelId)
     })
     const patch: Record<string, string> = { [mode === "text" ? "textModel" : "imageModel"]: modelId }
     if (p) patch.provider = p.id
     saveSettings(patch as any)
     setOpen(false)
+    onModelChange?.()
   }
 
   return (

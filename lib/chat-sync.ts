@@ -6,7 +6,6 @@ import {
   onSnapshot,
   query,
   orderBy,
-  getDoc,
   getDocs,
 } from "firebase/firestore"
 import { getFirestoreDB } from "./firebase"
@@ -42,6 +41,7 @@ export function startChatSync(auth: Auth | null) {
       currentUid = user.uid
       setLocalUid(user.uid)
       initListener(user.uid)
+      loadRemoteChats(user.uid)
       migrateLocalChats(user.uid)
     } else if (!user) {
       currentUid = null
@@ -50,6 +50,26 @@ export function startChatSync(auth: Auth | null) {
       clearRetries()
     }
   })
+}
+
+async function loadRemoteChats(uid: string) {
+  const db = getFirestoreDB()
+  if (!db) return
+  try {
+    const snapshot = await getDocs(collection(db, "users", uid, "chats"))
+    for (const doc of snapshot.docs) {
+      const raw = doc.data() as Chat
+      const local = getAllChats().find((c) => c.id === doc.id)
+      const remoteVersion = raw._syncVersion ?? 0
+      const localVersion = local ? getSyncVersion(local) : -1
+      if (remoteVersion > localVersion) {
+        const decrypted = await decryptChat(raw, uid)
+        upsertChat({ ...decrypted, _syncVersion: remoteVersion })
+      }
+    }
+  } catch {
+    // offline — localStorage will serve as cache
+  }
 }
 
 async function encryptChat(chat: Chat): Promise<Chat> {
@@ -162,7 +182,7 @@ export async function syncChat(chat: Chat) {
     } finally {
       syncInProgress = false
     }
-  }, 500)
+    }, 100)
 }
 
 export function removeChat(chatId: string) {

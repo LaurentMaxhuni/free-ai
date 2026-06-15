@@ -10,6 +10,7 @@ export type ProviderId =
 export type ModelOption = {
   id: string
   label: string
+  supportsWebSearch?: boolean
 }
 
 export type DynamicModelSource =
@@ -55,9 +56,16 @@ export const PROVIDERS: Record<ProviderId, Provider> = {
     capabilities: ["text", "image"],
     baseUrl: "https://api.cloudflare.com/client/v4/accounts",
     requiresKey: false,
-    textModels: [{ id: "@cf/openai/gpt-oss-120b", label: "Free.ai" }],
+    textModels: [
+      { id: "@cf/meta/llama-3.2-3b-instruct", label: "Llama 3.2 3B" },
+      { id: "@cf/meta/llama-3.1-8b-instruct", label: "Llama 3.1 8B" },
+      { id: "@cf/mistral/mistral-7b-instruct-v0.1", label: "Mistral 7B" },
+      { id: "@cf/google/gemma-2-9b-it", label: "Gemma 2 9B" },
+    ],
     imageModels: [
-      { id: "@cf/black-forest-labs/flux-1-schnell", label: "Free Image" },
+      { id: "@cf/black-forest-labs/flux-1-schnell", label: "Flux Schnell" },
+      { id: "@cf/stabilityai/stable-diffusion-xl-base-1.0", label: "SDXL Base" },
+      { id: "@cf/bytedance/stable-diffusion-xl-lightning", label: "SDXL Lightning" },
     ],
   },
 
@@ -71,8 +79,20 @@ export const PROVIDERS: Record<ProviderId, Provider> = {
     requiresKey: true,
     keyPlaceholder: "Enter your Pollinations API key",
     keyHelpUrl: "https://pollinations.ai",
-    textModels: [{ id: "openai", label: "OpenAI" }],
-    imageModels: [{ id: "flux", label: "Flux" }],
+    textModels: [
+      { id: "openai", label: "OpenAI" },
+      { id: "openai-large", label: "OpenAI Large" },
+      { id: "mistral", label: "Mistral" },
+      { id: "llama", label: "Llama" },
+      { id: "deepseek", label: "DeepSeek" },
+    ],
+    imageModels: [
+      { id: "flux", label: "Flux" },
+      { id: "flux-realism", label: "Flux Realism" },
+      { id: "flux-anime", label: "Flux Anime" },
+      { id: "flux-3d", label: "Flux 3D" },
+      { id: "any-dark", label: "Any Dark" },
+    ],
   },
 
   puter: {

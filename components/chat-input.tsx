@@ -6,11 +6,14 @@ import type { ChatMode, FileAttachment } from "@/lib/ai"
 import { readFileAsAttachment } from "@/lib/ai"
 import { Button } from "@/components/ui/button"
 import { ModelSelector } from "@/components/model-selector"
+import { getSettings } from "@/lib/settings"
+import { PROVIDERS } from "@/lib/providers"
 import { cn } from "@/lib/utils"
 
 type Props = {
   onSend: (content: string, mode: ChatMode, searchEnabled?: boolean, attachments?: FileAttachment[]) => void
   onStop?: () => void
+  onModelChange?: () => void
   isGenerating: boolean
   initialMode?: ChatMode
   disabled?: boolean
@@ -28,6 +31,7 @@ const ICONS: Record<string, typeof Paperclip> = {
 export function ChatInput({
   onSend,
   onStop,
+  onModelChange,
   isGenerating,
   initialMode = "text",
   disabled = false,
@@ -113,6 +117,13 @@ export function ChatInput({
     }
   }
 
+  const settings = getSettings()
+  const currentModelId = mode === "text" ? settings.textModel : settings.imageModel
+  const currentModel = Object.values(PROVIDERS)
+    .flatMap((p) => [...p.textModels, ...p.imageModels])
+    .find((m) => m.id === currentModelId)
+  const searchUnsupported = currentModel?.supportsWebSearch === false
+
   const placeholder =
     mode === "text" ? "Message Free.ai..." : "Describe the image you want..."
 
@@ -151,17 +162,18 @@ export function ChatInput({
           <ImageIcon className="size-3.5" />
           Image
         </button>
-        <ModelSelector mode={mode} />
+        <ModelSelector mode={mode} onModelChange={onModelChange} />
         <div className="flex-1" />
         <button
           type="button"
           onClick={() => setSearchEnabled((v) => !v)}
-          disabled={disabled || mode === "image"}
+          disabled={disabled || mode === "image" || searchUnsupported}
           className={cn(
             "flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full transition-colors cursor-pointer active:scale-[0.97]",
             searchEnabled
               ? "bg-foreground text-background"
-              : "text-muted-foreground hover:text-foreground"
+              : "text-muted-foreground hover:text-foreground",
+            searchUnsupported && "opacity-40"
           )}
           aria-pressed={searchEnabled}
           aria-label="Toggle web search"

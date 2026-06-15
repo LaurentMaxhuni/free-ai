@@ -8,6 +8,7 @@ export type Settings = {
   imageModel: string
   visibleProviders: ProviderId[]
   autoSync: boolean
+  colorTheme: string
 }
 
 const ALL_PROVIDERS: ProviderId[] = [
@@ -22,10 +23,11 @@ const ALL_PROVIDERS: ProviderId[] = [
 
 const DEFAULTS: Settings = {
   provider: "freeai",
-  textModel: "@cf/openai/gpt-oss-120b",
+  textModel: "@cf/meta/llama-3.2-3b-instruct",
   imageModel: "@cf/black-forest-labs/flux-1-schnell",
   visibleProviders: [...ALL_PROVIDERS],
   autoSync: true,
+  colorTheme: "default",
 }
 
 export function getSettings(): Settings {

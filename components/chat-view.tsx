@@ -39,6 +39,7 @@ import {
 import { startChatSync, syncChat } from "@/lib/chat-sync"
 import { auth } from "@/lib/firebase"
 import { onAuthStateChanged, type User } from "firebase/auth"
+import { PROVIDERS } from "@/lib/providers"
 
 function ChatViewInner() {
   const [activeChat, setActiveChat] = useState<Chat | null>(null)
@@ -51,6 +52,7 @@ function ChatViewInner() {
   const [showPreviewPanel, setShowPreviewPanel] = useState(false)
   const [userName, setUserName] = useState("")
   const [userAvatar, setUserAvatar] = useState("")
+  const [modelVersion, setModelVersion] = useState(0)
   const abortRef = useRef<AbortController | null>(null)
   const bufferRef = useRef("")
   const reasoningBufferRef = useRef("")
@@ -96,6 +98,10 @@ function ChatViewInner() {
     return () => {
       abortRef.current?.abort()
     }
+  }, [])
+
+  const handleModelChange = useCallback(() => {
+    setModelVersion((v) => v + 1)
   }, [])
 
   const handleNewChat = useCallback(() => {
@@ -196,6 +202,24 @@ function ChatViewInner() {
         })
       }
 
+      const hasImageAttachments = attachments?.some((a) => a.type === "image")
+      if (hasImageAttachments && !PROVIDERS[getSettings().provider].capabilities.includes("image")) {
+        setActiveChat((prev) => {
+          if (!prev) return prev
+          const updated: Chat = {
+            ...prev,
+            messages: [...prev.messages, { role: "assistant", content: "This provider does not support image attachments. Switch to a provider that supports images (e.g., Free.ai) or remove the image." }],
+            updatedAt: Date.now(),
+          }
+          upsertChat(updated)
+          syncChat(updated)
+          return updated
+        })
+        setIsGenerating(false)
+        abortRef.current = null
+        return
+      }
+
       try {
         if (mode === "image") {
           saveSettings({
@@ -278,9 +302,12 @@ function ChatViewInner() {
           return
         }
         const detail = error instanceof Error ? error.message : "Please try again."
+        const friendly = /does not support image/i.test(detail)
+          ? "This model does not support image attachments. Try switching to a model that supports images, or remove the image and try again."
+          : `Error: ${detail}`
         const errorMessage = {
           role: "assistant" as const,
-          content: `Error: ${detail}`,
+          content: friendly,
         }
         setActiveChat((prev) => {
           if (!prev) return prev
@@ -342,6 +369,13 @@ function ChatViewInner() {
         )
       : activeChat?.title ?? "New chat"
 
+  const currentSettings = getSettings()
+  const currentProviderName = PROVIDERS[currentSettings.provider]?.name ?? currentSettings.provider
+  const currentModelId = currentSettings.textModel
+  const currentModelLabel = Object.values(PROVIDERS)
+    .flatMap((p) => p.textModels)
+    .find((m) => m.id === currentModelId)?.label ?? currentModelId
+
   return (
     <div className="h-dvh flex bg-background overflow-hidden">
       <aside className="hidden md:flex w-72 border-r shrink-0 flex-col">
@@ -390,7 +424,7 @@ function ChatViewInner() {
               <Sparkles className="size-4 text-primary shrink-0" />
               <h1 className="text-sm font-semibold truncate">{headerTitle}</h1>
               <span className="text-xs text-muted-foreground hidden sm:inline truncate">
-                · {getSettings().provider}
+                · {currentProviderName}
               </span>
             </div>
             <div className="flex items-center gap-1">
@@ -410,6 +444,7 @@ function ChatViewInner() {
                 onPreview={() => setShowPreviewPanel(true)}
                 userName={userName}
                 userAvatar={userAvatar}
+                modelLabel={currentModelLabel}
               />
             )}
           </div>
@@ -418,6 +453,7 @@ function ChatViewInner() {
             <ChatInput
               onSend={handleSend}
               onStop={handleStop}
+              onModelChange={handleModelChange}
               isGenerating={isGenerating}
               initialMode={activeChat?.mode ?? "text"}
               disabled={!hydrated}
