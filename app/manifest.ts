@@ -7,9 +7,14 @@ export default function manifest(): MetadataRoute.Manifest {
     description: "Free AI Chat, Image Generation, and More",
     start_url: "/",
     display: "standalone",
-    background_color: "#000000",
-    theme_color: "#33ffcc",
+    background_color: "#0f0f11",
+    theme_color: "#349ff8",
     icons: [
+      {
+        src: "/icon.svg",
+        sizes: "512x512",
+        type: "image/svg+xml",
+      },
       {
         src: "/icon-192.png",
         sizes: "192x192",

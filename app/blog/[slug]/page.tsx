@@ -1,13 +1,23 @@
+import type { Metadata } from "next"
 import Link from "next/link"
 import { ArrowLeft } from "lucide-react"
 import { notFound } from "next/navigation"
 import Navbar from "@/components/navbar"
 import Footer from "@/components/footer"
 
-const posts = {
+type Post = {
+  title: string
+  date: string
+  excerpt: string
+  content: string
+}
+
+const posts: Record<string, Post> = {
   "getting-started-with-free-ai": {
     title: "Getting Started with Free AI: A Beginner's Guide",
     date: "June 10, 2026",
+    excerpt:
+      "Learn how to harness the power of free AI tools for text generation, image creation, and more — no credit card required.",
     content: `
       <p>Artificial intelligence is no longer a futuristic concept &mdash; it's a tool available to anyone with an internet connection. Free AI platforms have democratized access to powerful language models and image generators, putting creative and productivity tools in the hands of millions.</p>
 
@@ -32,6 +42,8 @@ const posts = {
   "best-free-ai-image-generators-2026": {
     title: "Best Free AI Image Generators in 2026",
     date: "June 5, 2026",
+    excerpt:
+      "Compare the top free AI image generation tools and discover how to create stunning visuals without spending a dime.",
     content: `
       <p>AI image generation has evolved rapidly. In 2026, there are several excellent free options available, each with its own strengths. Here's a breakdown of what's out there and how Free.ai fits into the ecosystem.</p>
 
@@ -51,6 +63,8 @@ const posts = {
   "using-llms-effectively": {
     title: "Using Large Language Models Effectively",
     date: "May 28, 2026",
+    excerpt:
+      "Tips and techniques for getting better results from LLMs like GPT, Claude, and Gemini through prompt engineering.",
     content: `
       <p>Large language models (LLMs) are powerful tools, but their output quality depends heavily on how you interact with them. Effective prompt engineering can dramatically improve results.</p>
 
@@ -70,6 +84,8 @@ const posts = {
   "open-source-vs-closed-source-ai": {
     title: "Open Source vs Closed Source AI Models",
     date: "May 20, 2026",
+    excerpt:
+      "Explore the trade-offs between open and closed source AI models and how to choose the right one for your project.",
     content: `
       <p>The debate between open source and closed source AI models continues to shape the industry. Both approaches have passionate advocates and compelling arguments. Understanding the trade-offs helps you make informed choices.</p>
 
@@ -86,6 +102,8 @@ const posts = {
   "future-of-free-ai-tools": {
     title: "The Future of Free AI Tools",
     date: "May 12, 2026",
+    excerpt:
+      "What trends are shaping the landscape of free AI tools and what users can expect in the coming years.",
     content: `
       <p>The free AI landscape has changed dramatically over the past few years. What started as limited trials and demo APIs has evolved into robust platforms offering genuine utility at no cost. Here's where the industry is headed.</p>
 
@@ -104,14 +122,59 @@ const posts = {
   },
 }
 
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ slug: string }>
+}): Promise<Metadata> {
+  const { slug } = await params
+  const post = posts[slug]
+  if (!post) return {}
+
+  return {
+    title: post.title,
+    description: post.excerpt,
+    alternates: {
+      canonical: `https://free-ai-lm.vercel.app/blog/${slug}`,
+    },
+    openGraph: {
+      title: `${post.title} | Free AI Blog`,
+      description: post.excerpt,
+      type: "article",
+      publishedTime: new Date(post.date).toISOString(),
+    },
+  }
+}
+
 export default async function BlogPostPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params
-  const post = posts[slug as keyof typeof posts]
+  const post = posts[slug]
 
   if (!post) notFound()
 
+  const blogPostingSchema = {
+    "@context": "https://schema.org",
+    "@type": "BlogPosting",
+    headline: post.title,
+    description: post.excerpt,
+    datePublished: post.date,
+    author: {
+      "@type": "Person",
+      name: "Laurent Maxhuni",
+    },
+    publisher: {
+      "@type": "Organization",
+      name: "Free.ai",
+    },
+    url: `https://free-ai-lm.vercel.app/blog/${slug}`,
+  }
+
   return (
     <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(blogPostingSchema) }}
+      />
       <Navbar />
       <main className="pt-16 min-h-dvh">
         <div className="max-w-3xl mx-auto px-4 py-16">

@@ -1,5 +1,20 @@
+import type { Metadata } from "next"
 import Navbar from "@/components/navbar"
 import Footer from "@/components/footer"
+
+export const metadata: Metadata = {
+  title: "About",
+  description:
+    "Learn about Free.ai — the free AI platform created by Laurent Maxhuni. Our mission is to make artificial intelligence accessible to everyone, for free.",
+  alternates: {
+    canonical: "https://free-ai-lm.vercel.app/about",
+  },
+  openGraph: {
+    title: "About | Free AI Chat & Tools",
+    description:
+      "Learn about Free.ai — the free AI platform created by Laurent Maxhuni. Our mission is to make AI accessible to everyone, for free.",
+  },
+}
 
 export default function AboutPage() {
   return (
@@ -50,6 +65,22 @@ export default function AboutPage() {
               we don&apos;t limit your usage with arbitrary quotas, and we don&apos;t sell your data.
               Free.ai is funded through voluntary support and operates on a lean infrastructure to
               minimize costs.
+            </p>
+          </section>
+
+          <section className="space-y-3">
+            <h2 className="text-xl font-semibold text-foreground tracking-tight">Created by Laurent Maxhuni</h2>
+            <p>
+              Free.ai was created by <strong className="text-foreground">Laurent Maxhuni</strong>, a developer
+              and AI enthusiast committed to making artificial intelligence accessible to everyone. The
+              project was born from the belief that cost should never be a barrier to using cutting-edge
+              AI technology.
+            </p>
+            <p>
+              Laurent built Free.ai to aggregate free AI providers into a single seamless interface,
+              eliminating the need to juggle multiple accounts, API keys, and pricing tiers. The result
+              is a platform where anyone — from students to professionals — can leverage the power of
+              free AI for chat, image generation, and more.
             </p>
           </section>
         </div>

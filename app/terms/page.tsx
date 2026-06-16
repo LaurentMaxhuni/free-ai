@@ -1,5 +1,15 @@
+import type { Metadata } from "next"
 import Navbar from "@/components/navbar"
 import Footer from "@/components/footer"
+
+export const metadata: Metadata = {
+  title: "Terms of Service",
+  description:
+    "Free.ai terms of service — the rules and guidelines for using our free AI platform. By using Free.ai you agree to these terms.",
+  alternates: {
+    canonical: "https://free-ai-lm.vercel.app/terms",
+  },
+}
 
 export default function TermsPage() {
   return (

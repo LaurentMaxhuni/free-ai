@@ -20,24 +20,30 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   metadataBase: new URL("https://free-ai-lm.vercel.app"),
   title: {
-    default: "Free.ai | Unlock Your Creativity with AI",
-    template: "%s | Free.ai",
+    default: "Free AI — Chat, Image Generation & AI Tools | Free.ai",
+    template: "%s | Free AI Chat & Tools",
   },
   description:
-    "Experience the power of AI-driven creativity with Free.ai. Generate stunning images, craft compelling text, and explore endless possibilities with our cutting-edge AI tools — completely free, no limits.",
+    "Free AI chat and image generation with no limits and no credit card required. Generate stunning images with Flux, chat with multiple AI models like GPT and Claude, and create content for free at Free.ai — the best free AI platform.",
   keywords: [
     "free ai",
-    "ai image generator",
-    "ai text generator",
+    "free ai chat",
+    "ai image generator free",
     "free ai tools",
-    "ai creativity",
-    "ai assistant",
-    "ai chat",
-    "free ai image generation",
-    "ai writing assistant",
+    "free ai image generator",
+    "ai chat free",
+    "free ai writing assistant",
+    "ai text generator free",
+    "free ai platform",
+    "free ai laurent maxhuni",
+    "laurent maxhuni free ai",
+    "generative ai free",
+    "free artificial intelligence",
+    "free ai online",
+    "no cost ai",
   ],
-  authors: [{ name: "Free.ai" }],
-  creator: "Free.ai",
+  authors: [{ name: "Free.ai" }, { name: "Laurent Maxhuni" }],
+  creator: "Laurent Maxhuni",
   publisher: "Free.ai",
   robots: {
     index: true,
@@ -55,15 +61,15 @@ export const metadata: Metadata = {
     locale: "en_US",
     url: "https://free-ai-lm.vercel.app",
     siteName: "Free.ai",
-    title: "Free.ai | Unlock Your Creativity with AI",
+    title: "Free AI — Chat, Image Generation & AI Tools | Free.ai",
     description:
-      "Generate stunning images and craft compelling text with our cutting-edge AI tools — completely free, no limits.",
+      "Free AI chat and image generation with no limits and no credit card required. Generate stunning images with Flux, chat with multiple AI models, and create content for free.",
     images: [
       {
         url: "/og-image.svg",
         width: 1200,
         height: 630,
-        alt: "Free.ai — Unlock Your Creativity with AI",
+        alt: "Free.ai — Free AI Chat, Image Generation & Tools",
       },
       {
         url: "/free.ai.png",
@@ -75,14 +81,15 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Free.ai | Unlock Your Creativity with AI",
+    title: "Free AI — Chat, Image Generation & AI Tools | Free.ai",
     description:
-      "Generate stunning images and craft compelling text with our cutting-edge AI tools — completely free, no limits.",
+      "Free AI chat and image generation with no limits and no credit card required. Generate stunning images with Flux, chat with multiple AI models, and create content for free.",
     images: ["/og-image.svg"],
   },
   icons: {
     icon: [
       { url: "/favicon.svg", type: "image/svg+xml" },
+      { url: "/icon.svg", type: "image/svg+xml", sizes: "512x512" },
     ],
     shortcut: "/favicon.svg",
     apple: [
@@ -117,6 +124,43 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              "@context": "https://schema.org",
+              "@type": "WebApplication",
+              name: "Free.ai",
+              url: "https://free-ai-lm.vercel.app",
+              description:
+                "Free AI chat and image generation with no limits. Chat with multiple AI models, generate images with Flux, and create content for free.",
+              applicationCategory: "AIApplication",
+              operatingSystem: "Web",
+              offers: {
+                "@type": "Offer",
+                price: "0",
+                priceCurrency: "USD",
+              },
+              author: {
+                "@type": "Person",
+                name: "Laurent Maxhuni",
+              },
+            }),
+          }}
+        />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              "@context": "https://schema.org",
+              "@type": "Organization",
+              name: "Free.ai",
+              url: "https://free-ai-lm.vercel.app",
+              description:
+                "Free AI chat, image generation, and content creation platform.",
+            }),
+          }}
+        />
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
           <ColorThemeProvider>
             {children}

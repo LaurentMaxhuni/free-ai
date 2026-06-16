@@ -1,7 +1,22 @@
+import type { Metadata } from "next"
 import Link from "next/link"
 import { Badge } from "@/components/ui/badge"
 import Navbar from "@/components/navbar"
 import Footer from "@/components/footer"
+
+export const metadata: Metadata = {
+  title: "Blog",
+  description:
+    "Free AI tips, guides, and updates — learn how to use free AI tools for chat, image generation, and more from the Free.ai team.",
+  alternates: {
+    canonical: "https://free-ai-lm.vercel.app/blog",
+  },
+  openGraph: {
+    title: "Blog | Free AI Chat & Tools",
+    description:
+      "Free AI tips, guides, and updates — learn how to use free AI tools for chat, image generation, and more.",
+  },
+}
 
 const posts = [
   {

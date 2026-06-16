@@ -1,5 +1,15 @@
+import type { Metadata } from "next"
 import Navbar from "@/components/navbar"
 import Footer from "@/components/footer"
+
+export const metadata: Metadata = {
+  title: "Privacy Policy",
+  description:
+    "Free.ai privacy policy — how we collect, use, and protect your data. We do not sell your personal information.",
+  alternates: {
+    canonical: "https://free-ai-lm.vercel.app/privacy",
+  },
+}
 
 export default function PrivacyPage() {
   return (
