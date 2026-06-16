@@ -51,6 +51,7 @@ function ChatViewInner() {
   const [reasoningContent, setReasoningContent] = useState("")
   const [previewBlocks, setPreviewBlocks] = useState<CodePreviewContent[]>([])
   const [showPreviewPanel, setShowPreviewPanel] = useState(false)
+  const [previewSourceContent, setPreviewSourceContent] = useState<string | null>(null)
   const [userName, setUserName] = useState("")
   const [userAvatar, setUserAvatar] = useState("")
   const [modelVersion, setModelVersion] = useState(0)
@@ -114,6 +115,7 @@ function ChatViewInner() {
     reasoningBufferRef.current = ""
     setPreviewBlocks([])
     setShowPreviewPanel(false)
+    setPreviewSourceContent(null)
     setSidebarOpen(false)
   }, [])
 
@@ -128,6 +130,7 @@ function ChatViewInner() {
     reasoningBufferRef.current = ""
     setPreviewBlocks([])
     setShowPreviewPanel(false)
+    setPreviewSourceContent(null)
     setSidebarOpen(false)
   }, [])
 
@@ -340,17 +343,11 @@ function ChatViewInner() {
     [handleSend]
   )
 
-  const scanPreviewBlocks = useCallback(() => {
-    const msgs = activeChat?.messages ?? []
-    const allContent = [...msgs.map((m) => m.content), streamingContent]
-      .filter(Boolean)
-      .join("\n\n")
-    setPreviewBlocks(extractCodeBlocks(allContent))
-  }, [activeChat, streamingContent])
-
   useEffect(() => {
-    if (showPreviewPanel) scanPreviewBlocks()
-  }, [activeChat?.messages, streamingContent, showPreviewPanel, scanPreviewBlocks])
+    if (showPreviewPanel && previewSourceContent) {
+      setPreviewBlocks(extractCodeBlocks(previewSourceContent))
+    }
+  }, [previewSourceContent, showPreviewPanel])
 
   const sidebar = (
     <ChatSidebar
@@ -448,7 +445,10 @@ function ChatViewInner() {
                 isGenerating={isGenerating}
                 streamingContent={streamingContent}
                 reasoningContent={reasoningContent}
-                onPreview={() => setShowPreviewPanel(true)}
+                onPreview={(content: string) => {
+                  setPreviewSourceContent(content)
+                  setShowPreviewPanel(true)
+                }}
                 userName={userName}
                 userAvatar={userAvatar}
                 modelLabel={currentModelLabel}

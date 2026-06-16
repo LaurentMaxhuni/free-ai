@@ -28,7 +28,7 @@ function combineBlocks(blocks: CodePreviewContent[]): string {
     return standaloneHtml[0]
   }
 
-  const html = [...standaloneHtml.map((h) => h.replace(/^<!DOCTYPE html>[\s\S]*?<body>[\s\S]*?<\/body>[\s\S]*?<\/html>/i, "")), ...fragmentHtml].join("\n")
+  const html = [...standaloneHtml.map((h) => h.replace(/^<!DOCTYPE html>[\s\S]*?<body[^>]*>([\s\S]*?)<\/body>[\s\S]*?<\/html>/i, "$1")), ...fragmentHtml].join("\n")
   const css = cssBlocks.join("\n")
   const js = jsBlocks.join("\n")
   const hasCss = css.trim().length > 0

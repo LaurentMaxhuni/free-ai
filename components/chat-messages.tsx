@@ -12,7 +12,7 @@ type Props = {
   isGenerating?: boolean
   streamingContent?: string
   reasoningContent?: string
-  onPreview?: () => void
+  onPreview?: (content: string) => void
   userName?: string
   userAvatar?: string
   modelLabel?: string
@@ -90,7 +90,7 @@ function ImageBubble({ url }: { url: string }) {
   )
 }
 
-function MessageBubble({ message, isStreaming, onPreview }: { message: ChatMessage; isStreaming?: boolean; onPreview?: () => void }) {
+function MessageBubble({ message, isStreaming, onPreview }: { message: ChatMessage; isStreaming?: boolean; onPreview?: (content: string) => void }) {
   if (isImageMessage(message)) {
     const url = getImageUrl(message)
     if (!url) return null
@@ -101,7 +101,7 @@ function MessageBubble({ message, isStreaming, onPreview }: { message: ChatMessa
     return (
       <div className="rounded-2xl bg-muted/60 px-4 py-2.5 max-w-2xl">
         <div className="text-sm leading-relaxed break-words overflow-x-hidden prose prose-sm dark:prose-invert prose-p:my-1 prose-pre:my-2 prose-ul:my-1 prose-ol:my-1 prose-li:my-0 max-w-none">
-          <MarkdownRenderer content={message.content} onPreview={onPreview} />
+          <MarkdownRenderer content={message.content} onPreview={() => onPreview?.(message.content)} />
           {isStreaming && (
             <span className="inline-block w-2 h-4 ml-0.5 bg-foreground/60 animate-pulse motion-reduce:animate-none rounded-sm align-text-bottom" />
           )}
@@ -306,7 +306,7 @@ export function ChatMessages({ messages, isGenerating, streamingContent, reasoni
             {reasoningContent ? <ThinkingBlock content={reasoningContent} /> : null}
             <div className="rounded-2xl bg-muted/60 px-4 py-2.5 max-w-2xl">
               <div className="text-sm leading-relaxed break-words overflow-x-hidden prose prose-sm dark:prose-invert prose-p:my-1 prose-pre:my-2 prose-ul:my-1 prose-ol:my-1 prose-li:my-0 max-w-none">
-                <MarkdownRenderer content={streamingContent} onPreview={onPreview} />
+                <MarkdownRenderer content={streamingContent} onPreview={() => onPreview?.(streamingContent)} />
                 <span className="inline-block w-2 h-4 ml-0.5 bg-foreground/60 animate-pulse motion-reduce:animate-none rounded-sm align-text-bottom" />
               </div>
             </div>

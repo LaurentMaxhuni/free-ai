@@ -578,18 +578,19 @@
 
 /* Scrollbar styles */
 ::-webkit-scrollbar {
-  width: 7px;
-  height: 7px;
+  width: 6px;
+  height: 6px;
 }
 ::-webkit-scrollbar-track {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: var(--border);
+  background: var(--muted-foreground);
   border-radius: 999px;
+  opacity: 0.5;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--muted-foreground);
+  background: var(--foreground);
 }
 ::-webkit-scrollbar-corner {
   background: transparent;
@@ -598,7 +599,7 @@
 /* Firefox */
 * {
   scrollbar-width: thin;
-  scrollbar-color: var(--border) transparent;
+  scrollbar-color: var(--muted-foreground) transparent;
 }
 
 @utility no-scrollbar {
