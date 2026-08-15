@@ -4,6 +4,9 @@ import { getFirestore, type Firestore } from "firebase/firestore";
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+  // The Firebase redirect helper must share the app's origin. The server-side
+  // proxy at /__/auth forwards these requests to the project's Firebase
+  // Hosting domain, avoiding browser third-party-storage restrictions.
   authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
   projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
   storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
@@ -11,6 +14,20 @@ const firebaseConfig = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
   measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID,
 };
+
+function getClientFirebaseConfig() {
+  if (typeof window === "undefined") return firebaseConfig;
+  return {
+    ...firebaseConfig,
+    // Firebase constructs the helper URL with HTTPS. Keep the project
+    // domain for the plain-HTTP local dev server; production deployments use
+    // the same-origin proxy and therefore need the app host here.
+    authDomain:
+      window.location.protocol === "https:"
+        ? window.location.host
+        : firebaseConfig.authDomain,
+  };
+}
 
 let cachedApp: FirebaseApp | null = null;
 let cachedAuth: Auth | null = null;
@@ -20,7 +37,7 @@ export function getFirestoreDB(): Firestore | null {
   if (typeof window === "undefined") return null;
   if (!firebaseConfig.apiKey) return null;
   if (!cachedApp) {
-    cachedApp = getApps()[0] ?? initializeApp(firebaseConfig);
+    cachedApp = getApps()[0] ?? initializeApp(getClientFirebaseConfig());
   }
   if (!cachedFirestore) {
     cachedFirestore = getFirestore(cachedApp);
@@ -37,7 +54,7 @@ function getFirebaseAuth(): Auth | null {
     return null;
   }
   if (!cachedApp) {
-    cachedApp = getApps()[0] ?? initializeApp(firebaseConfig);
+    cachedApp = getApps()[0] ?? initializeApp(getClientFirebaseConfig());
   }
   if (!cachedAuth) {
     cachedAuth = getAuth(cachedApp);

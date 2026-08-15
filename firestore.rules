@@ -2,16 +2,18 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-
-    // Users can read/write their own user document, but the server (via Admin SDK)
-    // is the only one that should ever read the `secrets` field back. We lock it
-    // down by denying reads and only allowing writes of the `secrets` field
-    // through the authenticated client. The actual secret values are written by
-    // the Next.js API route using the Admin SDK, so this rule primarily serves
-    // as a safety net.
+    // User secrets are written and read only by the Next.js Admin SDK. The
+    // client does not need direct access to this document.
     match /users/{userId} {
-      allow read, delete: if false;
-      allow create, update: if request.auth != null && request.auth.uid == userId;
+      allow read, create, update, delete: if false;
+
+      // Chats are encrypted in the browser and scoped to the authenticated
+      // user's subcollection. These rules cover reads, listeners, writes, and
+      // deletes on users/{uid}/chats/{chatId}.
+      match /chats/{chatId} {
+        allow read, create, update, delete: if
+          request.auth != null && request.auth.uid == userId;
+      }
     }
   }
 }

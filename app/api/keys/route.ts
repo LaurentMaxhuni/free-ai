@@ -9,7 +9,7 @@ const PROVIDER_IDS = Object.keys(PROVIDERS) as ProviderId[]
 const setKeySchema = z.object({
   provider: z.enum(PROVIDER_IDS as [ProviderId, ...ProviderId[]]),
   apiKey: z.string().min(1).max(512).optional(),
-  baseUrl: z.string().url().max(512).optional(),
+  baseUrl: z.string().url().max(512).refine((value) => /^https?:\/\//i.test(value), "Base URL must use HTTP or HTTPS.").optional(),
 })
 
 export async function GET(request: Request) {
@@ -51,6 +51,12 @@ export async function POST(request: Request) {
   if (apiKey && !providerConfig.requiresKey) {
     return NextResponse.json(
       { error: `${providerConfig.name} does not accept an API key.` },
+      { status: 400 }
+    )
+  }
+  if (baseUrl && provider !== "ollama") {
+    return NextResponse.json(
+      { error: "Custom base URLs are supported only for browser-direct Ollama connections." },
       { status: 400 }
     )
   }

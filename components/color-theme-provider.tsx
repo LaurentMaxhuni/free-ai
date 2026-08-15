@@ -14,6 +14,8 @@ export function ColorThemeProvider({ children }: { children: React.ReactNode }) 
       if (!raw) return
       const settings = JSON.parse(raw)
       if (settings.colorTheme && settings.colorTheme !== "default") {
+        // This effect hydrates an external localStorage value after mount.
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setThemeState(settings.colorTheme)
       }
     } catch {}

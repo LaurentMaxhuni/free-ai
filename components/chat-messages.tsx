@@ -99,13 +99,16 @@ function MessageBubble({ message, isStreaming, onPreview }: { message: ChatMessa
 
   if (message.role === "assistant") {
     return (
-      <div className="rounded-2xl bg-muted/60 px-4 py-2.5 max-w-2xl">
+      <div className="max-w-2xl">
+        {message.reasoning ? <ThinkingBlock content={message.reasoning} isStreaming={false} /> : null}
+        <div className="rounded-2xl bg-muted/60 px-4 py-2.5">
         <div className="text-sm leading-relaxed break-words overflow-x-hidden prose prose-sm dark:prose-invert prose-p:my-1 prose-pre:my-2 prose-ul:my-1 prose-ol:my-1 prose-li:my-0 max-w-none">
           <MarkdownRenderer content={message.content} onPreview={() => onPreview?.(message.content)} />
           {isStreaming && (
             <span className="inline-block w-2 h-4 ml-0.5 bg-foreground/60 animate-pulse motion-reduce:animate-none rounded-sm align-text-bottom" />
           )}
         </div>
+      </div>
       </div>
     )
   }
@@ -169,7 +172,7 @@ function TypingIndicator() {
   )
 }
 
-function ThinkingBlock({ content }: { content: string }) {
+function ThinkingBlock({ content, isStreaming = true }: { content: string; isStreaming?: boolean }) {
   const [open, setOpen] = useState(true)
 
   return (
@@ -207,7 +210,7 @@ function ThinkingBlock({ content }: { content: string }) {
           >
             <div className="mt-2 text-xs leading-relaxed text-muted-foreground/80 bg-muted/40 rounded-lg p-3 border-l-2 border-amber-500/40 whitespace-pre-wrap">
               {content}
-              <span className="inline-block w-1.5 h-3 ml-0.5 bg-amber-500/60 animate-pulse motion-reduce:animate-none rounded-sm align-text-bottom" />
+              {isStreaming ? <span className="inline-block w-1.5 h-3 ml-0.5 bg-amber-500/60 animate-pulse motion-reduce:animate-none rounded-sm align-text-bottom" /> : null}
             </div>
           </motion.div>
         )}
@@ -221,7 +224,7 @@ export function ChatMessages({ messages, isGenerating, streamingContent, reasoni
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" })
-  }, [messages, isGenerating, streamingContent])
+  }, [messages, isGenerating, streamingContent, reasoningContent])
 
   const hasStreamContent = isGenerating && streamingContent && streamingContent.length > 0
 
@@ -252,6 +255,7 @@ export function ChatMessages({ messages, isGenerating, streamingContent, reasoni
               aria-hidden
             >
               {isUser && userAvatar ? (
+                // eslint-disable-next-line @next/next/no-img-element
                 <img src={userAvatar} alt="" className="size-full object-cover" referrerPolicy="no-referrer" />
               ) : isUser ? (
                 <User className="size-4" />

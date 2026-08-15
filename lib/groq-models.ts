@@ -38,9 +38,9 @@ export async function fetchGroqModels(
   }
 
   if (response.status === 400) {
-    const body = await response.json().catch(() => ({}))
+    const body = await response.json().catch(() => ({})) as { error?: unknown }
     throw new GroqFetchError(
-      (body as any).error ?? "Groq API key is not configured."
+      typeof body.error === "string" ? body.error : "Groq API key is not configured."
     )
   }
 

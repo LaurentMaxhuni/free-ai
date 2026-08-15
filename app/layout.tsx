@@ -72,7 +72,7 @@ export const metadata: Metadata = {
         alt: "Free.ai — Free AI Chat, Image Generation & Tools",
       },
       {
-        url: "/free.ai.png",
+        url: "/icon-512.png",
         width: 512,
         height: 512,
         alt: "Free.ai",

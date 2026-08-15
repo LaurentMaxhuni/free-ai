@@ -31,17 +31,17 @@ export async function GET(request: Request) {
       )
     }
 
-    const data = await response.json()
-    const raw = Array.isArray(data.data) ? data.data : []
+    const data = await response.json() as { data?: unknown }
+    const raw = (Array.isArray(data.data) ? data.data : []) as Array<{ id?: unknown; active?: unknown }>
     const models = raw
-      .filter((m: any) => m?.id && m.active !== false)
-      .map((m: any) => ({ id: m.id, label: m.id.replace(/-/g, " ") }))
+      .filter((model): model is { id: string; active?: unknown } => typeof model.id === "string" && model.active !== false)
+      .map((model) => ({ id: model.id, label: model.id.replace(/-/g, " ") }))
       .sort((a: { label: string }, b: { label: string }) =>
         a.label.localeCompare(b.label)
       )
 
     return NextResponse.json({ models })
-  } catch (err) {
+  } catch {
     return NextResponse.json(
       { error: "Failed to reach Groq API" },
       { status: 502 }

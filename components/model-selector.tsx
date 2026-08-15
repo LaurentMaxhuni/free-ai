@@ -6,21 +6,21 @@ import { getSettings, saveSettings } from "@/lib/settings"
 import { PROVIDERS, type ProviderId, type ModelOption } from "@/lib/providers"
 import { cn } from "@/lib/utils"
 import type { ChatMode } from "@/lib/ai"
-import { listConfiguredKeys } from "@/lib/keys-api"
+import { listConfiguredKeys, type ConfiguredProvider } from "@/lib/keys-api"
 
 export function ModelSelector({ mode, onModelChange }: { mode: ChatMode; onModelChange?: () => void }) {
   const [open, setOpen] = useState(false)
   const [dynamicModels, setDynamicModels] = useState<Record<string, ModelOption[]>>({})
   const [loading, setLoading] = useState<Record<string, boolean>>({})
-  const [configuredProviders, setConfiguredProviders] = useState<Set<ProviderId> | null>(null)
+  const [configuredProviders, setConfiguredProviders] = useState<ConfiguredProvider[] | null>(null)
   const settings = getSettings()
   const currentModelId = mode === "text" ? settings.textModel : settings.imageModel
   const dropdownRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     listConfiguredKeys()
-      .then((keys) => setConfiguredProviders(new Set(keys.filter((k) => k.hasApiKey).map((k) => k.provider))))
-      .catch(() => setConfiguredProviders(new Set()))
+      .then((keys) => setConfiguredProviders(keys))
+      .catch(() => setConfiguredProviders([]))
   }, [])
 
   const visibleProviderIds = settings.visibleProviders ?? Object.keys(PROVIDERS)
@@ -29,7 +29,7 @@ export function ModelSelector({ mode, onModelChange }: { mode: ChatMode; onModel
     .map((id) => PROVIDERS[id as ProviderId])
     .filter(Boolean)
     .filter((p) => p.capabilities.includes(mode))
-    .filter((p) => !p.requiresKey || configuredProviders?.has(p.id))
+    .filter((p) => !p.requiresKey || configuredProviders?.some((item) => item.provider === p.id && item.hasApiKey))
     .filter((p) =>
       mode === "text"
         ? p.textModels.length > 0 || p.dynamicModels
@@ -53,7 +53,12 @@ export function ModelSelector({ mode, onModelChange }: { mode: ChatMode; onModel
         let models: ModelOption[] = []
         if (needsDynamic.kind === "ollama") {
           const { fetchOllamaModels } = await import("@/lib/ollama-models")
-          models = await fetchOllamaModels(p.baseUrl)
+          const configured = configuredProviders?.find((item) => item.provider === p.id)
+          const baseUrl = configured?.baseUrl || p.baseUrl
+          if (configured?.baseUrl) {
+            saveSettings({ ollamaBaseUrl: configured.baseUrl })
+          }
+          models = await fetchOllamaModels(baseUrl)
         } else if (needsDynamic.kind === "groq") {
           const { fetchGroqModels } = await import("@/lib/groq-models")
           models = await fetchGroqModels()
@@ -71,6 +76,9 @@ export function ModelSelector({ mode, onModelChange }: { mode: ChatMode; onModel
         setLoading((prev) => ({ ...prev, [key]: false }))
       }
     })
+  // providerGroups and dynamicModels are derived from this effect's own
+  // results; including them would refetch every time a model arrives.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode, configuredProviders])
 
   useEffect(() => {
@@ -102,9 +110,11 @@ export function ModelSelector({ mode, onModelChange }: { mode: ChatMode; onModel
         : (pg.imageModels.length ? pg.imageModels : dynamicModels[key] ?? [])
       return models.some((m) => m.id === modelId)
     })
-    const patch: Record<string, string> = { [mode === "text" ? "textModel" : "imageModel"]: modelId }
-    if (p) patch.provider = p.id
-    saveSettings(patch as any)
+    if (mode === "text") {
+      saveSettings({ textModel: modelId, ...(p ? { provider: p.id } : {}) })
+    } else {
+      saveSettings({ imageModel: modelId, ...(p ? { provider: p.id } : {}) })
+    }
     setOpen(false)
     onModelChange?.()
   }

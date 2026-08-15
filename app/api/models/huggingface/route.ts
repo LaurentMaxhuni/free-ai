@@ -31,26 +31,26 @@ export async function GET(request: Request) {
       )
     }
 
-    const data = await response.json()
-    const raw = Array.isArray(data) ? data : []
+    const data = await response.json() as unknown
+    const raw = (Array.isArray(data) ? data : []) as Array<Record<string, unknown>>
     const models = raw
       .filter(
-        (m: any) =>
-          m?.id &&
-          m?.pipeline_tag === "text-to-image" &&
-          m?.inference !== false &&
-          (typeof m?.inference === "string" || m?.inference === true)
+        (model) =>
+          typeof model.id === "string" &&
+          model.pipeline_tag === "text-to-image" &&
+          model.inference !== false &&
+          (typeof model.inference === "string" || model.inference === true)
       )
-      .map((m: any) => ({
-        id: m.id,
-        label: m.id.split("/").pop()?.replace(/-/g, " ") ?? m.id,
+      .map((model) => ({
+        id: model.id as string,
+        label: (model.id as string).split("/").pop()?.replace(/-/g, " ") ?? model.id as string,
       }))
       .sort((a: { label: string }, b: { label: string }) =>
         a.label.localeCompare(b.label)
       )
 
     return NextResponse.json({ models })
-  } catch (err) {
+  } catch {
     return NextResponse.json(
       { error: "Failed to reach Hugging Face API" },
       { status: 502 }

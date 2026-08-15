@@ -1,6 +1,6 @@
 "use client"
 
-import { createContext, useContext, useEffect, useState, useCallback, type ReactNode } from "react"
+import { createContext, useContext, useEffect, useState, useCallback, useRef, type ReactNode } from "react"
 
 type Theme = "dark" | "light" | "system"
 
@@ -31,6 +31,7 @@ function ThemeProvider({
   const [resolvedTheme, setResolvedTheme] = useState<"dark" | "light">(
     defaultTheme === "system" ? "light" : defaultTheme
   )
+  const themeRef = useRef<Theme>(defaultTheme)
 
   const applyTheme = useCallback((newTheme: Theme) => {
     const resolved = newTheme === "system"
@@ -51,6 +52,7 @@ function ThemeProvider({
   }, [attribute, disableTransitionOnChange])
 
   const setTheme = useCallback((newTheme: Theme) => {
+    themeRef.current = newTheme
     setThemeState(newTheme)
     try { localStorage.setItem("theme", newTheme) } catch {}
     applyTheme(newTheme)
@@ -59,13 +61,16 @@ function ThemeProvider({
   useEffect(() => {
     const stored = localStorage.getItem("theme") as Theme | null
     const initial = stored || defaultTheme
+    themeRef.current = initial
+    // Hydrate the persisted external preference after the client mounts.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setThemeState(initial)
     applyTheme(initial)
 
     if (enableSystem) {
       const mq = window.matchMedia("(prefers-color-scheme: dark)")
       const handler = () => {
-        if (theme === "system") applyTheme("system")
+        if (themeRef.current === "system") applyTheme("system")
       }
       mq.addEventListener("change", handler)
       return () => mq.removeEventListener("change", handler)

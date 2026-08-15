@@ -11,10 +11,30 @@ import Footer from "@/components/footer"
 
 export default function ContactPage() {
   const [submitted, setSubmitted] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [fields, setFields] = useState({ name: "", email: "", subject: "", message: "" })
 
-  const handleSubmit = (e: FormEvent) => {
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
-    setSubmitted(true)
+    setSubmitting(true)
+    setError(null)
+    try {
+      const response = await fetch("/api/contact", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(fields),
+      })
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}))
+        throw new Error(typeof data?.error === "string" ? data.error : "Could not send your message.")
+      }
+      setSubmitted(true)
+    } catch (submissionError) {
+      setError(submissionError instanceof Error ? submissionError.message : "Could not send your message.")
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   if (submitted) {
@@ -54,27 +74,28 @@ export default function ContactPage() {
         <form onSubmit={handleSubmit} className="space-y-5">
           <div className="space-y-2">
             <Label htmlFor="name">Name</Label>
-            <Input id="name" required placeholder="Your name" />
+            <Input id="name" name="name" required placeholder="Your name" value={fields.name} disabled={submitting} onChange={(event) => setFields((prev) => ({ ...prev, name: event.target.value }))} />
           </div>
 
           <div className="space-y-2">
             <Label htmlFor="email">Email</Label>
-            <Input id="email" type="email" required placeholder="you@example.com" />
+            <Input id="email" name="email" type="email" required placeholder="you@example.com" value={fields.email} disabled={submitting} onChange={(event) => setFields((prev) => ({ ...prev, email: event.target.value }))} />
           </div>
 
           <div className="space-y-2">
             <Label htmlFor="subject">Subject</Label>
-            <Input id="subject" required placeholder="How can we help?" />
+            <Input id="subject" name="subject" required placeholder="How can we help?" value={fields.subject} disabled={submitting} onChange={(event) => setFields((prev) => ({ ...prev, subject: event.target.value }))} />
           </div>
 
           <div className="space-y-2">
             <Label htmlFor="message">Message</Label>
-            <Textarea id="message" rows={5} required placeholder="Tell us more..." />
+            <Textarea id="message" name="message" rows={5} required placeholder="Tell us more..." value={fields.message} disabled={submitting} onChange={(event) => setFields((prev) => ({ ...prev, message: event.target.value }))} />
           </div>
 
-          <Button type="submit" className="w-full gap-2 cursor-pointer">
+          {error ? <p role="alert" className="text-sm text-destructive">{error}</p> : null}
+          <Button type="submit" disabled={submitting} className="w-full gap-2 cursor-pointer">
             <Send className="size-4" />
-            Send Message
+            {submitting ? "Sending..." : "Send Message"}
           </Button>
         </form>
       </div>

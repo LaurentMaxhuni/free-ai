@@ -9,6 +9,7 @@ import { ModelSelector } from "@/components/model-selector"
 import { getSettings } from "@/lib/settings"
 import { PROVIDERS } from "@/lib/providers"
 import { cn } from "@/lib/utils"
+import { MAX_IMAGE_PROMPT_LENGTH, MAX_MESSAGE_LENGTH } from "@/lib/limits"
 
 type Props = {
   onSend: (content: string, mode: ChatMode, searchEnabled?: boolean, attachments?: FileAttachment[]) => void
@@ -223,6 +224,7 @@ export function ChatInput({
           onChange={(event) => setValue(event.target.value)}
           onKeyDown={handleKeyDown}
           placeholder={dragOver ? "Drop files here..." : placeholder}
+          maxLength={mode === "image" ? MAX_IMAGE_PROMPT_LENGTH : MAX_MESSAGE_LENGTH}
           rows={1}
           disabled={disabled}
           aria-label="Chat message"

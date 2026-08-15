@@ -1,4 +1,14 @@
 import { NextResponse } from "next/server"
+import { z } from "zod"
+import { AuthError, verifyRequest } from "@/lib/server/verify-auth"
+
+const querySchema = z.object({
+  query: z.string().trim().min(1).max(500),
+})
+
+const RATE_WINDOW_MS = 60_000
+const MAX_REQUESTS_PER_WINDOW = 20
+const rateLimits = new Map<string, { resetAt: number; count: number }>()
 
 function decodeEntities(text: string): string {
   return text
@@ -12,19 +22,31 @@ function decodeEntities(text: string): string {
 }
 
 function extractUrl(ddgUrl: string): string {
-  const m = ddgUrl.match(/uddg=([^&]+)/)
-  return m ? decodeURIComponent(m[1]) : ddgUrl
+  const match = ddgUrl.match(/uddg=([^&]+)/)
+  return match ? decodeURIComponent(match[1]) : ddgUrl
+}
+
+function takeRateLimit(uid: string): boolean {
+  const now = Date.now()
+  const current = rateLimits.get(uid)
+  if (!current || current.resetAt <= now) {
+    rateLimits.set(uid, { resetAt: now + RATE_WINDOW_MS, count: 1 })
+    return true
+  }
+  if (current.count >= MAX_REQUESTS_PER_WINDOW) return false
+  current.count += 1
+  return true
 }
 
 async function searchDuckDuckGo(query: string): Promise<string> {
   const url = `https://html.duckduckgo.com/html/?q=${encodeURIComponent(query)}`
-  const res = await fetch(url, {
+  const response = await fetch(url, {
     headers: {
       "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
     },
   })
-  if (!res.ok) throw new Error(`DuckDuckGo returned ${res.status}`)
-  const html = await res.text()
+  if (!response.ok) throw new Error(`DuckDuckGo returned ${response.status}`)
+  const html = await response.text()
 
   const linkRe = /<a[^>]+class="result__a"[^>]*href="([^"]*)"[^>]*>([\s\S]*?)<\/a>/gi
   const snippetRe = /<a[^>]+class="result__snippet"[^>]*>([\s\S]*?)<\/a>/gi
@@ -32,17 +54,17 @@ async function searchDuckDuckGo(query: string): Promise<string> {
   const titles: string[] = []
   const snippets: string[] = []
 
-  let m: RegExpExecArray | null
-  while ((m = linkRe.exec(html)) !== null) {
-    links.push(m[1])
-    titles.push(decodeEntities(m[2].replace(/<[^>]+>/g, "").trim()))
+  let match: RegExpExecArray | null
+  while ((match = linkRe.exec(html)) !== null) {
+    links.push(match[1])
+    titles.push(decodeEntities(match[2].replace(/<[^>]+>/g, "").trim()))
   }
-  while ((m = snippetRe.exec(html)) !== null) {
-    snippets.push(decodeEntities(m[1].replace(/<[^>]+>/g, "").trim()))
+  while ((match = snippetRe.exec(html)) !== null) {
+    snippets.push(decodeEntities(match[1].replace(/<[^>]+>/g, "").trim()))
   }
 
   const results: string[] = []
-  for (let i = 0; i < Math.min(links.length, 5); i++) {
+  for (let i = 0; i < Math.min(links.length, 5); i += 1) {
     results.push(
       `${i + 1}. ${titles[i] || "Untitled"}\n   URL: ${extractUrl(links[i])}\n   ${snippets[i] || ""}`
     )
@@ -51,15 +73,37 @@ async function searchDuckDuckGo(query: string): Promise<string> {
 }
 
 export async function POST(request: Request) {
+  let decoded
   try {
-    const { query } = (await request.json()) as { query: string }
-    if (!query || typeof query !== "string") {
-      return NextResponse.json({ error: "Query is required" }, { status: 400 })
-    }
-    const results = await searchDuckDuckGo(query.slice(0, 500))
+    decoded = await verifyRequest(request)
+  } catch (error) {
+    if (error instanceof AuthError) return NextResponse.json({ error: error.message }, { status: error.status })
+    throw error
+  }
+
+  if (!takeRateLimit(decoded.uid)) {
+    return NextResponse.json(
+      { error: "Search rate limit exceeded. Try again in a minute." },
+      { status: 429, headers: { "Retry-After": "60" } }
+    )
+  }
+
+  let body: unknown
+  try {
+    body = await request.json()
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 })
+  }
+  const parsed = querySchema.safeParse(body)
+  if (!parsed.success) {
+    return NextResponse.json({ error: "Query is required and must be a string of 500 characters or fewer." }, { status: 400 })
+  }
+
+  try {
+    const results = await searchDuckDuckGo(parsed.data.query)
     return NextResponse.json({ results })
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : "Search failed"
-    return NextResponse.json({ error: msg }, { status: 502 })
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Search failed"
+    return NextResponse.json({ error: message }, { status: 502 })
   }
 }

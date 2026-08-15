@@ -1,13 +1,16 @@
 import { NextResponse } from "next/server"
 import { z } from "zod"
 import { PROVIDERS, type ProviderId } from "@/lib/providers"
+import { MAX_IMAGE_PROMPT_LENGTH } from "@/lib/limits"
 import { AuthError, verifyRequest } from "@/lib/server/verify-auth"
 import { getProviderCredentials } from "@/lib/server/keys"
 
+const PROVIDER_IDS = Object.keys(PROVIDERS) as ProviderId[]
+
 const requestSchema = z.object({
-  provider: z.string().min(1).max(100),
+  provider: z.enum(PROVIDER_IDS as [ProviderId, ...ProviderId[]]),
   model: z.string().min(1).max(256),
-  prompt: z.string().min(1).max(4000),
+  prompt: z.string().min(1).max(MAX_IMAGE_PROMPT_LENGTH),
 })
 
 function errorResponse(message: string, status: number) {
@@ -32,12 +35,19 @@ export async function POST(request: Request) {
   }
 
   const { provider: providerId, model, prompt } = parsed.data
-  const provider = PROVIDERS[providerId as keyof typeof PROVIDERS]
-  if (!provider || !provider.capabilities.includes("image")) {
+  const provider = PROVIDERS[providerId]
+  if (!provider.capabilities.includes("image")) {
     return errorResponse(
       `${providerId} does not support image generation.`,
       400
     )
+  }
+
+  if (providerId === "pollinations") {
+    return errorResponse("Pollinations images are generated directly by the browser.", 400)
+  }
+  if (!provider.imageModels.some((option) => option.id === model) && providerId !== "huggingface") {
+    return errorResponse(`Model \"${model}\" is not available for ${provider.name}.`, 400)
   }
 
   let apiKey = ""
@@ -54,7 +64,7 @@ export async function POST(request: Request) {
     }
     baseUrl = `https://api.cloudflare.com/client/v4/accounts/${accountId}/ai`
   } else {
-    const creds = await getProviderCredentials(decoded.uid, providerId as ProviderId)
+    const creds = await getProviderCredentials(decoded.uid, providerId)
     if (provider.requiresKey && !creds.apiKey) {
       return errorResponse(
         `${provider.name} requires an API key. Add one in Settings → API Keys.`,
@@ -62,13 +72,33 @@ export async function POST(request: Request) {
       )
     }
     apiKey = creds.apiKey ?? ""
-    baseUrl = creds.baseUrl ?? provider.baseUrl
+    // Custom base URLs are never used by server-side provider calls. Ollama is
+    // the only browser-direct provider and is not handled by this route.
+    baseUrl = provider.baseUrl
+  }
+
+  if (providerId === "huggingface") {
+    try {
+      const response = await fetch(
+        "https://api-inference.huggingface.co/models?pipeline_tag=text-to-image&sort=downloads&direction=-1&limit=200",
+        {
+          headers: apiKey ? { Authorization: `Bearer ${apiKey}` } : {},
+          signal: request.signal,
+        }
+      )
+      if (!response.ok) return errorResponse("Could not validate the Hugging Face model.", 502)
+      const data = await response.json().catch(() => [])
+      const found = Array.isArray(data) && data.some((item) => item?.id === model)
+      if (!found) return errorResponse(`Model \"${model}\" is not available for Hugging Face.`, 400)
+    } catch {
+      return errorResponse("Could not validate the Hugging Face model.", 502)
+    }
   }
 
   try {
     const dataUrl = providerId === "freeai"
-      ? await callCloudflareAI(baseUrl, model, prompt, apiKey)
-      : await callHuggingFace(baseUrl, model, prompt, apiKey)
+      ? await callCloudflareAI(baseUrl, model, prompt, apiKey, request.signal)
+      : await callHuggingFace(baseUrl, model, prompt, apiKey, request.signal)
     return NextResponse.json({ dataUrl })
   } catch (err) {
     const message = err instanceof Error ? err.message : "Provider request failed"
@@ -80,7 +110,8 @@ async function callHuggingFace(
   baseUrl: string,
   model: string,
   prompt: string,
-  apiKey: string
+  apiKey: string,
+  signal: AbortSignal
 ): Promise<string> {
   const MAX_RETRIES = 3
   const RETRY_DELAY = 2000
@@ -93,10 +124,19 @@ async function callHuggingFace(
         "Content-Type": "application/json",
       },
       body: JSON.stringify({ inputs: prompt }),
+      signal,
     })
 
     if (response.status === 503 && attempt < MAX_RETRIES) {
-      await new Promise((r) => setTimeout(r, RETRY_DELAY * attempt))
+      await new Promise<void>((resolve, reject) => {
+        const timer = setTimeout(resolve, RETRY_DELAY * attempt)
+        const abort = () => {
+          clearTimeout(timer)
+          reject(new DOMException("The request was aborted.", "AbortError"))
+        }
+        if (signal.aborted) abort()
+        else signal.addEventListener("abort", abort, { once: true })
+      })
       continue
     }
 
@@ -154,7 +194,8 @@ async function callCloudflareAI(
   baseUrl: string,
   model: string,
   prompt: string,
-  apiKey: string
+  apiKey: string,
+  signal: AbortSignal
 ): Promise<string> {
   const response = await fetch(`${baseUrl}/run/${model}`, {
     method: "POST",
@@ -163,6 +204,7 @@ async function callCloudflareAI(
       "Content-Type": "application/json",
     },
     body: JSON.stringify({ prompt }),
+    signal,
   })
 
   if (!response.ok) {

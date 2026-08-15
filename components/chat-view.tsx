@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 import { Menu, Sparkles } from "lucide-react"
 import { SettingsDialog } from "@/components/settings-dialog"
-import { getSettings, saveSettings } from "@/lib/settings"
+import { getSettings } from "@/lib/settings"
 import { AuthGuard } from "@/components/auth-guard"
 import { ChatSidebar } from "@/components/chat-sidebar"
 import { ChatMessages } from "@/components/chat-messages"
@@ -25,7 +25,9 @@ import {
   deriveTitle,
   getActiveChatId,
   getChat,
+  hydrateChats,
   onChatsChange,
+  setLocalUid,
   setActiveChatId,
   upsertChat,
 } from "@/lib/chat-storage"
@@ -36,11 +38,13 @@ import {
   buildImageMessage,
   buildMultimodalContent,
   generateTextStream,
+  isImageMessage,
 } from "@/lib/ai"
 import { startChatSync, syncChat } from "@/lib/chat-sync"
 import { auth } from "@/lib/firebase"
-import { onAuthStateChanged, type User } from "firebase/auth"
+import { onAuthStateChanged } from "firebase/auth"
 import { PROVIDERS } from "@/lib/providers"
+import { MAX_IMAGE_PROMPT_LENGTH, MAX_MESSAGE_LENGTH } from "@/lib/limits"
 
 function ChatViewInner() {
   const [activeChat, setActiveChat] = useState<Chat | null>(null)
@@ -54,24 +58,48 @@ function ChatViewInner() {
   const [previewSourceContent, setPreviewSourceContent] = useState<string | null>(null)
   const [userName, setUserName] = useState("")
   const [userAvatar, setUserAvatar] = useState("")
-  const [modelVersion, setModelVersion] = useState(0)
+  const [, setModelVersion] = useState(0)
   const abortRef = useRef<AbortController | null>(null)
+  const generatingRef = useRef(false)
+  const generationIdRef = useRef(0)
   const bufferRef = useRef("")
   const reasoningBufferRef = useRef("")
   const rafRef = useRef<number | null>(null)
 
   useEffect(() => {
     if (!auth) return
-    const unsub = onAuthStateChanged(auth, (user) => {
-      setUserName(user?.displayName ?? "")
-      setUserAvatar(user?.photoURL ?? "")
-    })
-    return unsub
+    startChatSync(auth)
   }, [])
 
   useEffect(() => {
     if (!auth) return
-    startChatSync(auth)
+    let cancelled = false
+    const unsub = onAuthStateChanged(auth, (user) => {
+      setUserName(user?.displayName ?? "")
+      setUserAvatar(user?.photoURL ?? "")
+      if (!user) {
+        setLocalUid(null)
+        generationIdRef.current += 1
+        abortRef.current?.abort()
+        abortRef.current = null
+        generatingRef.current = false
+        setIsGenerating(false)
+        setActiveChat(null)
+        setHydrated(false)
+        return
+      }
+      setLocalUid(user.uid)
+      void hydrateChats(user.uid).then(() => {
+        if (cancelled) return
+        const id = getActiveChatId()
+        setActiveChat(id ? getChat(id) : null)
+        setHydrated(true)
+      })
+    })
+    return () => {
+      cancelled = true
+      unsub()
+    }
   }, [])
 
   useEffect(() => {
@@ -80,20 +108,12 @@ function ChatViewInner() {
       if (id) {
         const chat = getChat(id)
         if (chat) setActiveChat(chat)
+        else setActiveChat(null)
+      } else {
+        setActiveChat(null)
       }
     })
     return unsub
-  }, [])
-
-  useEffect(() => {
-    const id = getActiveChatId()
-    if (id) {
-      const chat = getChat(id)
-      if (chat) {
-        setActiveChat(chat)
-      }
-    }
-    setHydrated(true)
   }, [])
 
   useEffect(() => {
@@ -107,6 +127,11 @@ function ChatViewInner() {
   }, [])
 
   const handleNewChat = useCallback(() => {
+    generationIdRef.current += 1
+    abortRef.current?.abort()
+    abortRef.current = null
+    generatingRef.current = false
+    setIsGenerating(false)
     setActiveChat(null)
     setActiveChatId(null)
     setStreamingContent("")
@@ -120,9 +145,18 @@ function ChatViewInner() {
   }, [])
 
   const handleSelectChat = useCallback((id: string) => {
+    generationIdRef.current += 1
+    abortRef.current?.abort()
+    abortRef.current = null
+    generatingRef.current = false
+    setIsGenerating(false)
     const chat = getChat(id)
     if (chat) {
       setActiveChat(chat)
+      setActiveChatId(id)
+    } else {
+      setActiveChat(null)
+      setActiveChatId(null)
     }
     setStreamingContent("")
     setReasoningContent("")
@@ -135,7 +169,10 @@ function ChatViewInner() {
   }, [])
 
   const handleStop = useCallback(() => {
+    generationIdRef.current += 1
     abortRef.current?.abort()
+    abortRef.current = null
+    generatingRef.current = false
     setIsGenerating(false)
     bufferRef.current = ""
     reasoningBufferRef.current = ""
@@ -145,25 +182,36 @@ function ChatViewInner() {
 
   const handleSend = useCallback(
     async (content: string, mode: ChatMode, searchEnabled?: boolean, attachments?: FileAttachment[]) => {
-      if (isGenerating) return
+      if (generatingRef.current || isGenerating) return
+
+      const controller = new AbortController()
+      const generationId = generationIdRef.current + 1
+      generationIdRef.current = generationId
+      generatingRef.current = true
+      abortRef.current = controller
+      setIsGenerating(true)
+      setStreamingContent("")
+      setReasoningContent("")
+
+      const cleanContent = content.trim().slice(0, mode === "image" ? MAX_IMAGE_PROMPT_LENGTH : MAX_MESSAGE_LENGTH)
 
       const userMessage: ChatMessage & { attachments?: FileAttachment[] } = {
         role: "user" as const,
-        content,
+        content: cleanContent,
         ...(attachments && attachments.length > 0 ? { attachments } : {}),
       }
 
       let chat: Chat
       if (!activeChat) {
         chat = createChat(mode)
-        chat.title = deriveTitle(content)
+        chat.title = deriveTitle(cleanContent)
       } else {
         chat = {
           ...activeChat,
           mode,
         }
         if (!chat.title || chat.title === "New chat") {
-          chat.title = deriveTitle(content)
+          chat.title = deriveTitle(cleanContent)
         }
       }
       chat.messages = [...chat.messages, userMessage]
@@ -173,29 +221,54 @@ function ChatViewInner() {
       syncChat(chat)
       setActiveChatId(chat.id)
 
+      const saveMessageToChat = (message: ChatMessage) => {
+        if (generationIdRef.current !== generationId || controller.signal.aborted) return
+        const target = getChat(chat.id)
+        if (!target) return
+        const updated: Chat = {
+          ...target,
+          messages: [...target.messages, message],
+          updatedAt: Date.now(),
+        }
+        upsertChat(updated)
+        syncChat(updated)
+        if (getActiveChatId() === chat.id) setActiveChat(updated)
+      }
+
+      const finishGeneration = () => {
+        if (generationIdRef.current !== generationId) return
+        generatingRef.current = false
+        setIsGenerating(false)
+        if (abortRef.current === controller) abortRef.current = null
+      }
+
       let searchContext = ""
       if (searchEnabled && mode === "text") {
         try {
+          const token = auth?.currentUser ? await auth.currentUser.getIdToken() : ""
           const searchRes = await fetch("/api/search", {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ query: content }),
+            headers: {
+              "Content-Type": "application/json",
+              ...(token ? { Authorization: `Bearer ${token}` } : {}),
+            },
+            body: JSON.stringify({ query: cleanContent }),
+            signal: controller.signal,
           })
           if (searchRes.ok) {
             const searchData = await searchRes.json()
             if (searchData.results) {
-              searchContext = `Web search results for "${content}":\n\n${searchData.results}`
+              searchContext = `Web search results for "${cleanContent}":\n\n${searchData.results}`.slice(0, MAX_MESSAGE_LENGTH)
             }
           }
         } catch {
+          if (controller.signal.aborted) {
+            finishGeneration()
+            return
+          }
           /* search failure is non-fatal */
         }
       }
-
-      const controller = new AbortController()
-      abortRef.current = controller
-      setIsGenerating(true)
-      setStreamingContent("")
 
       const flush = () => {
         if (rafRef.current !== null) return
@@ -207,38 +280,23 @@ function ChatViewInner() {
       }
 
       const hasImageAttachments = attachments?.some((a) => a.type === "image")
-      if (hasImageAttachments && !PROVIDERS[getSettings().provider].capabilities.includes("image")) {
-        setActiveChat((prev) => {
-          if (!prev) return prev
-          const updated: Chat = {
-            ...prev,
-            messages: [...prev.messages, { role: "assistant", content: "This provider does not support image attachments. Switch to a provider that supports images (e.g., Free.ai) or remove the image." }],
-            updatedAt: Date.now(),
-          }
-          upsertChat(updated)
-          syncChat(updated)
-          return updated
+      if (hasImageAttachments && !PROVIDERS[getSettings().provider]?.capabilities.includes("image")) {
+        saveMessageToChat({
+          role: "assistant",
+          content: "This provider does not support image attachments. Switch to a provider that supports images (e.g., Free.ai) or remove the image.",
         })
-        setIsGenerating(false)
-        abortRef.current = null
+        finishGeneration()
         return
       }
 
       try {
         if (mode === "image") {
-          saveSettings({
-            provider: "freeai",
-            imageModel: "@cf/black-forest-labs/flux-1-schnell",
+          const imageSettings = getSettings()
+          const assistantMessage = await buildImageMessage(cleanContent, controller.signal, {
+            provider: imageSettings.provider,
+            imageModel: imageSettings.imageModel,
           })
-          const assistantMessage = await buildImageMessage(content)
-          const updated: Chat = {
-            ...chat,
-            messages: [...chat.messages, assistantMessage],
-            updatedAt: Date.now(),
-          }
-          setActiveChat(updated)
-          upsertChat(updated)
-          syncChat(updated)
+          saveMessageToChat(assistantMessage)
         } else {
           const systemMessages = searchContext
             ? [{ role: "system" as const, content: searchContext }]
@@ -253,7 +311,9 @@ function ChatViewInner() {
               .filter((m) => m.role !== "system")
               .map((m) => ({
                 role: m.role,
-                content: buildMultimodalContent(m as ChatMessage & { attachments?: FileAttachment[] }),
+                content: isImageMessage(m)
+                  ? "[A generated image was returned in the previous turn and is omitted from text history.]"
+                  : buildMultimodalContent(m as ChatMessage & { attachments?: FileAttachment[] }),
               })),
           ]
 
@@ -262,47 +322,39 @@ function ChatViewInner() {
 
           await generateTextStream(apiMessages, controller.signal, {
             onToken: (token) => {
+              if (generationIdRef.current !== generationId) return
               bufferRef.current += token
               flush()
             },
             onReasoning: (token) => {
+              if (generationIdRef.current !== generationId) return
               reasoningBufferRef.current += token
               flush()
             },
             onDone: () => {
+              if (generationIdRef.current !== generationId || controller.signal.aborted) return
               if (rafRef.current !== null) {
                 cancelAnimationFrame(rafRef.current)
                 rafRef.current = null
               }
               setStreamingContent(bufferRef.current)
               setReasoningContent(reasoningBufferRef.current)
-              const assistantMessage = {
+              const assistantMessage: ChatMessage = {
                 role: "assistant" as const,
                 content: bufferRef.current,
+                ...(reasoningBufferRef.current ? { reasoning: reasoningBufferRef.current } : {}),
               }
-              setActiveChat((prev) => {
-                if (!prev) return prev
-                const updated: Chat = {
-                  ...prev,
-                  messages: [...prev.messages, assistantMessage],
-                  updatedAt: Date.now(),
-                }
-                  upsertChat(updated)
-                  syncChat(updated)
-                  return updated
-                })
+              saveMessageToChat(assistantMessage)
                 bufferRef.current = ""
                 reasoningBufferRef.current = ""
                 setStreamingContent("")
                 setReasoningContent("")
               },
-              onError: (error) => {
-              throw error
-            },
+              onError: () => {},
           })
         }
       } catch (error) {
-        if ((error as Error).name === "AbortError") {
+        if ((error as Error).name === "AbortError" || generationIdRef.current !== generationId) {
           return
         }
         const detail = error instanceof Error ? error.message : "Please try again."
@@ -313,27 +365,16 @@ function ChatViewInner() {
           role: "assistant" as const,
           content: friendly,
         }
-        setActiveChat((prev) => {
-          if (!prev) return prev
-          const updated: Chat = {
-            ...prev,
-            messages: [...prev.messages, errorMessage],
-            updatedAt: Date.now(),
-          }
-          upsertChat(updated)
-          syncChat(updated)
-          return updated
-        })
+        saveMessageToChat(errorMessage)
         bufferRef.current = ""
         reasoningBufferRef.current = ""
         setStreamingContent("")
         setReasoningContent("")
       } finally {
-        setIsGenerating(false)
-        abortRef.current = null
+        finishGeneration()
       }
     },
-    [activeChat, isGenerating]
+    [activeChat, isGenerating, userName]
   )
 
   const handleSuggestion = useCallback(

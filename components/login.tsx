@@ -2,33 +2,92 @@
 
 import { Button } from "@/components/ui/button"
 import {
+  browserLocalPersistence,
   GoogleAuthProvider,
-  signInWithPopup,
+  getRedirectResult,
   onAuthStateChanged,
+  setPersistence,
+  signInWithRedirect,
 } from "firebase/auth"
 import { auth } from "@/lib/firebase"
 import { Logo } from "@/components/logo"
 import { BackgroundPattern } from "./background-pattern"
-import { useCallback, useEffect } from "react"
-import { useRouter } from "next/navigation"
+import { useCallback, useEffect, useState } from "react"
+
+const REDIRECT_PENDING_KEY = "free-ai:google-redirect-pending"
 
 const Login = () => {
-  const router = useRouter()
+  const [isRedirecting, setIsRedirecting] = useState(false)
+  const [errorMessage, setErrorMessage] = useState("")
 
   useEffect(() => {
     if (!auth) return
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      if (user) router.replace("/chat")
-    })
-    return () => unsubscribe()
-  }, [router])
+    let mounted = true
+    let hasNavigated = false
+    const redirectWasPending = window.sessionStorage.getItem(REDIRECT_PENDING_KEY) === "1"
+    const clearRedirectMarker = () => window.sessionStorage.removeItem(REDIRECT_PENDING_KEY)
+    const navigateToChat = () => {
+      if (!mounted || hasNavigated) return
+      hasNavigated = true
+      clearRedirectMarker()
+      // A full navigation guarantees that the freshly restored Firebase user
+      // is available to AuthGuard before /chat renders.
+      window.location.replace("/chat")
+    }
 
-  const onLogin = useCallback(() => {
-    const fbAuth = auth
-    if (!fbAuth) return
-    const provider = new GoogleAuthProvider()
-    signInWithPopup(fbAuth, provider).catch(() => {})
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (!mounted) return
+      if (user) {
+        navigateToChat()
+      } else {
+        setIsRedirecting(false)
+      }
+    })
+
+    void (async () => {
+      try {
+        const result = await getRedirectResult(auth)
+        if (result?.user || auth.currentUser) navigateToChat()
+        else if (redirectWasPending && mounted) {
+          clearRedirectMarker()
+          setErrorMessage(
+            "Google returned without a signed-in Firebase user. Redirect sign-in may require HTTPS on localhost."
+          )
+        }
+      } catch (error: unknown) {
+        if (!mounted) return
+        clearRedirectMarker()
+        setIsRedirecting(false)
+        setErrorMessage(getAuthErrorMessage(error))
+      }
+    })()
+
+    return () => {
+      mounted = false
+      unsubscribe()
+    }
   }, [])
+
+  const onLogin = useCallback(async () => {
+    const fbAuth = auth
+    if (isRedirecting) return
+    if (!fbAuth) {
+      setErrorMessage("Firebase Authentication is not configured for this deployment.")
+      return
+    }
+    setErrorMessage("")
+    setIsRedirecting(true)
+    window.sessionStorage.setItem(REDIRECT_PENDING_KEY, "1")
+    const provider = new GoogleAuthProvider()
+    try {
+      await setPersistence(fbAuth, browserLocalPersistence)
+      await signInWithRedirect(fbAuth, provider)
+    } catch (error: unknown) {
+      window.sessionStorage.removeItem(REDIRECT_PENDING_KEY)
+      setIsRedirecting(false)
+      setErrorMessage(getAuthErrorMessage(error))
+    }
+  }, [isRedirecting])
 
   return (
     <div className="min-h-dvh flex items-center justify-center">
@@ -96,10 +155,17 @@ const Login = () => {
             type="button"
             className="mt-8 w-full gap-3 cursor-pointer"
             onClick={onLogin}
+            disabled={isRedirecting}
           >
             <GoogleLogo />
-            Continue with Google
+            {isRedirecting ? "Redirecting to Google…" : "Continue with Google"}
           </Button>
+
+          {errorMessage ? (
+            <p role="alert" className="mt-3 text-xs text-destructive text-center">
+              {errorMessage}
+            </p>
+          ) : null}
 
           <p className="mt-6 text-xs text-muted-foreground text-center">
             By continuing you agree to our{" "}
@@ -110,6 +176,19 @@ const Login = () => {
       </div>
     </div>
   )
+}
+
+function getAuthErrorMessage(error: unknown): string {
+  if (error && typeof error === "object" && "code" in error) {
+    const code = String((error as { code?: unknown }).code)
+    if (code === "auth/unauthorized-domain") {
+      return "This domain is not enabled for Google sign-in. Add it to Firebase Authentication → Settings → Authorized domains."
+    }
+    if (code === "auth/popup-closed-by-user") {
+      return "Sign-in was cancelled."
+    }
+  }
+  return error instanceof Error ? error.message : "Google sign-in failed. Please try again."
 }
 
 const GoogleLogo = () => (

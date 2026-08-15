@@ -1,4 +1,5 @@
 import type { Metadata } from "next"
+import { AuthGuard } from "@/components/auth-guard"
 import { ChatView } from "@/components/chat-view"
 import { ThemeScope } from "@/components/theme-scope"
 
@@ -15,9 +16,11 @@ export const metadata: Metadata = {
 
 const ChatPage = () => {
   return (
-    <ThemeScope>
-      <ChatView />
-    </ThemeScope>
+    <AuthGuard>
+      <ThemeScope>
+        <ChatView />
+      </ThemeScope>
+    </AuthGuard>
   )
 }
 

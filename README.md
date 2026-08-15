@@ -14,7 +14,7 @@ A free, multi-provider AI chat app — text and image generation, with Firebase 
 
 | Provider | Text | Image | Key required | Model list |
 |---|---|---|---|---|
-| Pollinations.ai | yes | yes | yes | static |
+| Pollinations.ai | yes | yes | no | static |
 | Puter | yes | no | yes | static |
 | Ollama (local) | yes | no | no (set base URL) | dynamic (fetched from `/api/tags`) |
 | Groq | yes | no | yes | static |
@@ -29,11 +29,11 @@ The default is Pollinations, which works with no key. To use a different provide
 OLLAMA_ORIGINS=* ollama serve
 ```
 
-Then paste `http://localhost:11434` (or your remote URL) into Settings → API Keys → Ollama base URL. The model dropdown pulls whatever you have pulled locally.
+Then paste `http://localhost:11434` (or your remote URL) into Settings → API Keys → Ollama base URL. Ollama requests and model discovery run from the browser, so a deployed Free.ai instance can still reach your computer or remote Ollama host. The model dropdown pulls whatever you have pulled locally.
 
 **OpenRouter** has a long list of free models (`:free` suffix). The Models tab fetches them from `https://openrouter.ai/api/v1/models`, filters to free ones, and caches the result in `localStorage` for an hour. Use the Refresh button to bypass the cache.
 
-**Puter** needs no setup — it's a free public service. Useful for trying the app before adding a key.
+**Puter** requires an auth token from its dashboard. Pollinations is the no-key option for trying the app without adding a provider key.
 
 ## Getting started
 
@@ -59,6 +59,16 @@ NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID=
 
 Get these from the Firebase Console → Project Settings → Your apps → Web app config.
 
+The app proxies Firebase's `/__/auth/*` redirect helper through its own origin so
+Google redirect sign-in also works in browsers that block third-party storage.
+For an HTTPS deployment, add that deployment host to Firebase Authentication's
+Authorized domains and add `https://<your-host>/__/auth/handler` to the Google
+OAuth client's authorized redirect URIs. The local HTTP server keeps using the
+standard `*.firebaseapp.com` auth domain. If a browser blocks that cross-origin
+redirect during local development, run `pnpm exec next dev --experimental-https`
+or test the HTTPS deployment; a plain HTTP server cannot host Firebase's
+same-origin HTTPS helper.
+
 ### Server (never committed)
 
 ```
@@ -76,7 +86,7 @@ On Vercel: paste `FIREBASE_PRIVATE_KEY` with literal `\n` in the value field —
 1. In the Firebase Console, enable **Firestore Database** (Native mode).
 2. Go to Firestore → Rules, paste the contents of [`firestore.rules`](./firestore.rules), and publish.
 
-The rules deny client reads of user documents, so API keys are only ever read by the Next.js server using the Admin SDK. The client can write its own document but never read it back.
+The rules deny client reads and writes of user documents, so API keys are only ever read or written by the Next.js server using the Admin SDK. Encrypted chat documents are allowed only in the authenticated user's own subcollection.
 
 ## Ollama (local)
 

@@ -286,7 +286,7 @@ function ProviderKeyCard({ configured, onChange }: { configured: ConfiguredProvi
   const [saved, setSaved] = useState(false)
   const [clearConfirmOpen, setClearConfirmOpen] = useState(false)
 
-  const canBaseUrl = provider.id === "ollama" || provider.id === "pollinations"
+  const canBaseUrl = provider.id === "ollama"
 
   const onSave = async () => {
     setBusy(true)
@@ -297,6 +297,9 @@ function ProviderKeyCard({ configured, onChange }: { configured: ConfiguredProvi
         ...(apiKey ? { apiKey } : {}),
         ...(baseUrl ? { baseUrl } : {}),
       })
+      if (configured.provider === "ollama" && baseUrl) {
+        saveSettings({ ollamaBaseUrl: baseUrl })
+      }
       setApiKey("")
       setBaseUrl("")
       setSaved(true)
@@ -315,6 +318,9 @@ function ProviderKeyCard({ configured, onChange }: { configured: ConfiguredProvi
     setError(null)
     try {
       await clearProviderKey(configured.provider)
+      if (configured.provider === "ollama") {
+        saveSettings({ ollamaBaseUrl: PROVIDERS.ollama.baseUrl })
+      }
       onChange()
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to clear key")
@@ -495,13 +501,18 @@ export default function SettingsPage() {
   useEffect(() => {
     if (!auth) return
     const unsub = onAuthStateChanged(auth, (user) => {
-      if (!user) router.replace("/login")
-      else setAuthorized(true)
+      if (!user) {
+        setAuthorized(false)
+        router.replace("/login")
+      } else {
+        setAuthorized(true)
+        // Firebase can restore the session after the first render. Load keys
+        // only once the auth callback has supplied a valid current user.
+        void reload()
+      }
     })
     return unsub
-  }, [router])
-
-  useEffect(() => { void reload() }, [reload])
+  }, [reload, router])
 
   const handleSignOut = async () => {
     if (signingOut || !auth) return

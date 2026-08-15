@@ -1,6 +1,13 @@
 import { getAuth } from "firebase/auth"
 import { auth } from "./firebase"
 import { getSettings } from "./settings"
+import {
+  MAX_ATTACHMENT_TEXT_LENGTH,
+  MAX_CONTENT_PART_TEXT_LENGTH,
+  MAX_FILE_SIZE,
+  MAX_IMAGE_PROMPT_LENGTH,
+} from "./limits"
+import type { ProviderId } from "./providers"
 
 export type ChatRole = "user" | "assistant" | "system"
 
@@ -19,17 +26,13 @@ export type FileAttachment = {
 export type ChatMessage = {
   role: ChatRole
   content: string
+  reasoning?: string
   attachments?: FileAttachment[]
 }
 
 export type ChatMode = "text" | "image"
 
-const MAX_FILE_SIZE = 10 * 1024 * 1024
 const IMAGE_TYPES = ["image/png", "image/jpeg", "image/gif", "image/webp", "image/svg+xml"]
-const TEXT_TYPES = [
-  "text/plain", "text/html", "text/css", "text/csv",
-  "application/json", "application/xml",
-]
 const CODE_TYPES = [
   "text/javascript", "application/javascript", "application/typescript",
   "text/typescript", "text/jsx", "text/tsx",
@@ -66,12 +69,37 @@ export async function readFileAsAttachment(file: File): Promise<FileAttachment |
   }
 
   if (category === "pdf") {
-    const text = await file.text()
-    return { ...base, data: text.slice(0, 50000), type: "text" }
+    try {
+      const pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs")
+      pdfjs.GlobalWorkerOptions.workerSrc = new URL(
+        "pdfjs-dist/legacy/build/pdf.worker.min.mjs",
+        import.meta.url
+      ).toString()
+      const document = await pdfjs.getDocument({
+        data: new Uint8Array(await file.arrayBuffer()),
+      }).promise
+      const pages: string[] = []
+      for (let pageNumber = 1; pageNumber <= document.numPages; pageNumber += 1) {
+        const page = await document.getPage(pageNumber)
+        const textContent = await page.getTextContent()
+        const pageText = textContent.items
+          .map((item) => ("str" in item ? item.str : ""))
+          .join(" ")
+          .trim()
+        if (pageText) pages.push(pageText)
+      }
+      return {
+        ...base,
+        data: pages.join("\n\n").slice(0, MAX_ATTACHMENT_TEXT_LENGTH),
+        type: "pdf",
+      }
+    } catch {
+      return null
+    }
   }
 
   const text = await file.text()
-  return { ...base, data: text.slice(0, 100000), type: "code" }
+  return { ...base, data: text.slice(0, MAX_ATTACHMENT_TEXT_LENGTH), type: "code" }
 }
 
 const IMAGE_PREFIX = "__FREE_AI_IMAGE__"
@@ -131,12 +159,50 @@ export type ApiMessage = {
   content: string | ChatContentPart[]
 }
 
+function emitStreamData(data: string, callbacks?: StreamCallbacks): boolean {
+  if (data === "[DONE]") {
+    callbacks?.onDone()
+    return true
+  }
+
+  try {
+    const parsed = JSON.parse(data)
+    if (parsed.error) throw new ApiError(parsed.error, 502)
+    const choice = parsed.choices?.[0]
+    const delta = choice?.delta
+    const content = delta?.content ?? choice?.text
+    if (typeof content === "string" && content) callbacks?.onToken(content)
+    else if (typeof parsed.content === "string" && parsed.content) callbacks?.onToken(parsed.content)
+
+    const reasoning =
+      delta?.reasoning_content ??
+      delta?.reasoning ??
+      parsed.reasoning_content ??
+      parsed.reasoning
+    if (typeof reasoning === "string" && reasoning) callbacks?.onReasoning?.(reasoning)
+  } catch (error) {
+    if (error instanceof ApiError) throw error
+    // Providers occasionally emit comments or malformed keep-alive chunks.
+  }
+  return false
+}
+
+function emitSseLine(line: string, callbacks?: StreamCallbacks): boolean {
+  const trimmed = line.trim()
+  if (!trimmed || !trimmed.startsWith("data:")) return false
+  return emitStreamData(trimmed.slice(5).trimStart(), callbacks)
+}
+
 export async function generateTextStream(
   messages: ApiMessage[],
   signal?: AbortSignal,
   callbacks?: StreamCallbacks
 ): Promise<void> {
   const settings = getSettings()
+  if (settings.provider === "ollama") {
+    await generateOllamaTextStream(messages, settings.ollamaBaseUrl, signal, callbacks)
+    return
+  }
   const token = await getIdToken()
 
   const response = await fetch("/api/chat", {
@@ -176,37 +242,88 @@ export async function generateTextStream(
     buffer = lines.pop() ?? ""
 
     for (const line of lines) {
-      const trimmed = line.trim()
-      if (!trimmed || !trimmed.startsWith("data: ")) continue
-      const data = trimmed.slice(6)
-      if (data === "[DONE]") {
-        callbacks?.onDone()
+      if (emitSseLine(line, callbacks)) {
         return
-      }
-
-      try {
-        const parsed = JSON.parse(data)
-        if (parsed.error) {
-          throw new ApiError(parsed.error, 502)
-        }
-        const choice = parsed.choices?.[0]
-        const delta = choice?.delta
-        if (delta?.content) {
-          callbacks?.onToken(delta.content)
-        } else if (typeof parsed.content === "string") {
-          callbacks?.onToken(parsed.content)
-        }
-        if (delta?.reasoning_content) {
-          callbacks?.onReasoning?.(delta.reasoning_content)
-        } else if (typeof parsed.reasoning_content === "string") {
-          callbacks?.onReasoning?.(parsed.reasoning_content)
-        }
-      } catch (err) {
-        if (err instanceof ApiError) throw err
       }
     }
   }
 
+  buffer += decoder.decode()
+  if (buffer.trim() && emitSseLine(buffer, callbacks)) {
+    return
+  }
+  callbacks?.onDone()
+}
+
+async function generateOllamaTextStream(
+  messages: ApiMessage[],
+  configuredBaseUrl: string,
+  signal?: AbortSignal,
+  callbacks?: StreamCallbacks
+): Promise<void> {
+  const settings = getSettings()
+  let resolvedBaseUrl = configuredBaseUrl || "http://localhost:11434"
+  if (resolvedBaseUrl === "http://localhost:11434") {
+    try {
+      const token = await getIdToken()
+      const response = await fetch("/api/keys", {
+        headers: { Authorization: `Bearer ${token}` },
+        signal,
+      })
+      const data = await response.json().catch(() => ({})) as {
+        configured?: Array<{ provider?: string; baseUrl?: string | null }>
+      }
+      const configured = data.configured?.find((item) => item.provider === "ollama")?.baseUrl
+      if (configured) resolvedBaseUrl = configured
+    } catch {
+      if (signal?.aborted) {
+        throw new DOMException("The request was aborted.", "AbortError")
+      }
+      // The browser can still use its local default if the settings endpoint
+      // is unavailable.
+    }
+  }
+  const baseUrl = resolvedBaseUrl.replace(/\/+$/, "")
+  const response = await fetch(`${baseUrl}/api/chat`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ model: settings.textModel, messages, stream: true }),
+    signal,
+  })
+  if (!response.ok) {
+    const detail = await response.text().catch(() => "")
+    throw new ApiError(`Ollama error (${response.status}): ${detail}`, response.status)
+  }
+  if (!response.body) throw new ApiError("No response body from Ollama", 502)
+
+  const reader = response.body.getReader()
+  const decoder = new TextDecoder()
+  let buffer = ""
+  const emitLine = (line: string) => {
+    const trimmed = line.trim()
+    if (!trimmed) return
+    try {
+      const parsed = JSON.parse(trimmed)
+      if (parsed.error) throw new ApiError(parsed.error, 502)
+      const content = parsed.message?.content ?? parsed.content
+      if (typeof content === "string" && content) callbacks?.onToken(content)
+      const reasoning = parsed.message?.thinking ?? parsed.thinking ?? parsed.reasoning
+      if (typeof reasoning === "string" && reasoning) callbacks?.onReasoning?.(reasoning)
+    } catch (error) {
+      if (error instanceof ApiError) throw error
+    }
+  }
+
+  while (true) {
+    const { done, value } = await reader.read()
+    if (done) break
+    buffer += decoder.decode(value, { stream: true })
+    const lines = buffer.split("\n")
+    buffer = lines.pop() ?? ""
+    for (const line of lines) emitLine(line)
+  }
+  buffer += decoder.decode()
+  if (buffer.trim()) emitLine(buffer)
   callbacks?.onDone()
 }
 
@@ -224,6 +341,9 @@ export async function generateText(
 }
 
 export function buildMultimodalContent(message: ChatMessage): string | ChatContentPart[] {
+  if (isImageMessage(message)) {
+    return "[A generated image was returned in the previous turn and is omitted from text history.]"
+  }
   const atts = message.attachments
   if (!atts || atts.length === 0) return message.content
 
@@ -236,7 +356,10 @@ export function buildMultimodalContent(message: ChatMessage): string | ChatConte
       parts.push({ type: "image_url", image_url: { url: att.data, detail: "auto" } })
     } else {
       const lang = att.name.split(".").pop()
-      parts.push({ type: "text", text: `\n\nFile: ${att.name}\n\`\`\`${lang ?? ""}\n${att.data}\n\`\`\`` })
+      parts.push({
+        type: "text",
+        text: `\n\nFile: ${att.name}\n\`\`\`${lang ?? ""}\n${att.data}\n\`\`\``.slice(0, MAX_CONTENT_PART_TEXT_LENGTH),
+      })
     }
   }
   return parts
@@ -251,7 +374,7 @@ function hashString(input: string): number {
   return Math.abs(hash)
 }
 
-function buildPollinationsUrl(prompt: string): string {
+function buildPollinationsUrl(prompt: string, model: string): string {
   const seed = hashString(prompt.trim().toLowerCase())
   const params = new URLSearchParams({
     width: "1024",
@@ -259,15 +382,23 @@ function buildPollinationsUrl(prompt: string): string {
     nologo: "true",
     enhance: "true",
     seed: String(seed),
+    ...(model ? { model } : {}),
   })
   return `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt.trim())}?${params.toString()}`
 }
 
-export async function buildImageMessage(prompt: string): Promise<ChatMessage> {
+export async function buildImageMessage(
+  prompt: string,
+  signal?: AbortSignal,
+  requestSettings?: { provider: ProviderId; imageModel: string }
+): Promise<ChatMessage> {
   const settings = getSettings()
+  const provider = requestSettings?.provider ?? settings.provider
+  const imageModel = requestSettings?.imageModel ?? settings.imageModel
+  const cleanPrompt = prompt.trim().slice(0, MAX_IMAGE_PROMPT_LENGTH)
 
-  if (settings.provider === "pollinations") {
-    const url = buildPollinationsUrl(prompt)
+  if (provider === "pollinations") {
+    const url = buildPollinationsUrl(cleanPrompt, imageModel)
     return { role: "assistant", content: `${IMAGE_PREFIX}${url}` }
   }
 
@@ -279,10 +410,11 @@ export async function buildImageMessage(prompt: string): Promise<ChatMessage> {
       Authorization: `Bearer ${token}`,
     },
     body: JSON.stringify({
-      provider: settings.provider,
-      model: settings.imageModel,
-      prompt: prompt.trim(),
+      provider,
+      model: imageModel,
+      prompt: cleanPrompt,
     }),
+    signal,
   })
   if (!response.ok) {
     const data = await response.json().catch(() => ({}))

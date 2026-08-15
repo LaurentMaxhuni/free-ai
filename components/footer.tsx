@@ -64,7 +64,7 @@ const Footer = () => {
             </span>
 
             <div className="flex items-center gap-5 text-muted-foreground">
-              <Link href="#" target="_blank" aria-label="GitHub repository">
+              <Link href="https://github.com/LaurentMaxhuni/free-ai" target="_blank" rel="noreferrer noopener" aria-label="GitHub repository">
                 <GithubIcon className="h-5 w-5" />
               </Link>
             </div>

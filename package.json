@@ -24,6 +24,7 @@
     "lucide-react": "^0.562.0",
     "motion": "^12.40.0",
     "next": "16.2.9",
+    "pdfjs-dist": "^4.10.38",
     "pnpm": "^10.26.2",
     "prism-react-renderer": "^2.4.1",
     "react": "19.2.3",

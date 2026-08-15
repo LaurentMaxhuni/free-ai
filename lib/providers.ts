@@ -72,12 +72,12 @@ export const PROVIDERS: Record<ProviderId, Provider> = {
   pollinations: {
     id: "pollinations",
     name: "Pollinations.ai",
-    description: "Free AI text & image generation. Requires an API key from pollinations.ai.",
+    description: "Free AI text & image generation. Works without an API key.",
     capabilities: ["text", "image"],
     baseUrl: "https://gen.pollinations.ai",
     chatPath: "/v1/chat/completions",
-    requiresKey: true,
-    keyPlaceholder: "Enter your Pollinations API key",
+    requiresKey: false,
+    keyPlaceholder: "Optional Pollinations API key",
     keyHelpUrl: "https://pollinations.ai",
     textModels: [
       { id: "openai", label: "OpenAI" },
