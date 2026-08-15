@@ -13,10 +13,8 @@ const firebaseAuthDomain =
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
-  // Keep Firebase's generated auth domain here. Google registers this
-  // redirect URI automatically; replacing it with a Vercel host requires a
-  // separate Google OAuth redirect-URI registration and causes "Access
-  // blocked" / redirect_uri_mismatch errors otherwise.
+  // The client switches this to the current HTTPS origin below so Firebase's
+  // redirect helper and its storage live on the same site as the app.
   authDomain: firebaseAuthDomain,
   projectId: firebaseProjectId,
   storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
@@ -24,6 +22,21 @@ const firebaseConfig = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
   measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID,
 };
+
+function getClientFirebaseConfig() {
+  if (typeof window === "undefined") return firebaseConfig;
+
+  return {
+    ...firebaseConfig,
+    // The /__/auth route is proxied by Next.js to the Firebase Hosting helper.
+    // Keep plain HTTP localhost on the standard Firebase domain because the
+    // helper itself requires HTTPS.
+    authDomain:
+      window.location.protocol === "https:"
+        ? window.location.host
+        : firebaseConfig.authDomain,
+  };
+}
 
 let cachedApp: FirebaseApp | null = null;
 let cachedAuth: Auth | null = null;
@@ -33,7 +46,7 @@ export function getFirestoreDB(): Firestore | null {
   if (typeof window === "undefined") return null;
   if (!firebaseConfig.apiKey) return null;
   if (!cachedApp) {
-    cachedApp = getApps()[0] ?? initializeApp(firebaseConfig);
+    cachedApp = getApps()[0] ?? initializeApp(getClientFirebaseConfig());
   }
   if (!cachedFirestore) {
     cachedFirestore = getFirestore(cachedApp);
@@ -50,7 +63,7 @@ function getFirebaseAuth(): Auth | null {
     return null;
   }
   if (!cachedApp) {
-    cachedApp = getApps()[0] ?? initializeApp(firebaseConfig);
+    cachedApp = getApps()[0] ?? initializeApp(getClientFirebaseConfig());
   }
   if (!cachedAuth) {
     cachedAuth = getAuth(cachedApp);
