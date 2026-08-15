@@ -2,14 +2,23 @@ import { getApps, initializeApp, type FirebaseApp } from "firebase/app";
 import { getAuth, type Auth } from "firebase/auth";
 import { getFirestore, type Firestore } from "firebase/firestore";
 
+const firebaseProjectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
+const configuredAuthDomain = process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN;
+const firebaseAuthDomain =
+  configuredAuthDomain?.endsWith(".firebaseapp.com")
+    ? configuredAuthDomain
+    : firebaseProjectId
+      ? `${firebaseProjectId}.firebaseapp.com`
+      : configuredAuthDomain;
+
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
   // Keep Firebase's generated auth domain here. Google registers this
   // redirect URI automatically; replacing it with a Vercel host requires a
   // separate Google OAuth redirect-URI registration and causes "Access
   // blocked" / redirect_uri_mismatch errors otherwise.
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
-  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+  authDomain: firebaseAuthDomain,
+  projectId: firebaseProjectId,
   storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
   messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
