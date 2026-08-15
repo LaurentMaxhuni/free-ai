@@ -29,6 +29,7 @@ import {
   AlertDialogAction,
   AlertDialogCancel,
 } from "@/components/ui/alert-dialog"
+import { startChatSync } from "@/lib/chat-sync"
 
 const NAV_ITEMS = [
   { id: "providers", label: "Providers", icon: Cpu },
@@ -500,6 +501,7 @@ export default function SettingsPage() {
 
   useEffect(() => {
     if (!auth) return
+    startChatSync(auth)
     const unsub = onAuthStateChanged(auth, (user) => {
       if (!user) {
         setAuthorized(false)

@@ -4,8 +4,6 @@ import {
   doc,
   getDocs,
   onSnapshot,
-  orderBy,
-  query,
   setDoc,
   type DocumentData,
   type QueryDocumentSnapshot,
@@ -267,13 +265,11 @@ function initListener(uid: string, epoch: number): void {
   stopListener()
   const db = getFirestoreDB()
   if (!db || !isCurrent(uid, epoch)) return
-  const chatsQuery = query(
-    collection(db, "users", uid, "chats"),
-    orderBy("updatedAt", "desc")
-  )
-
   unsubscribe = onSnapshot(
-    chatsQuery,
+    // Do not order this query. Firestore excludes documents missing the
+    // ordered field, which made older valid chat documents invisible during
+    // migration. The sidebar sorts the decrypted chats locally.
+    collection(db, "users", uid, "chats"),
     (snapshot) => {
       const changedDocs = snapshot
         .docChanges()

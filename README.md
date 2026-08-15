@@ -59,15 +59,10 @@ NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID=
 
 Get these from the Firebase Console → Project Settings → Your apps → Web app config.
 
-The app proxies Firebase's `/__/auth/*` redirect helper through its own origin so
-Google redirect sign-in also works in browsers that block third-party storage.
-For an HTTPS deployment, add that deployment host to Firebase Authentication's
-Authorized domains and add `https://<your-host>/__/auth/handler` to the Google
-OAuth client's authorized redirect URIs. The local HTTP server keeps using the
-standard `*.firebaseapp.com` auth domain. If a browser blocks that cross-origin
-redirect during local development, run `pnpm exec next dev --experimental-https`
-or test the HTTPS deployment; a plain HTTP server cannot host Firebase's
-same-origin HTTPS helper.
+Google redirect sign-in uses the Firebase project auth domain from the web app
+config, so the standard Firebase OAuth redirect URI remains valid in local and
+deployed environments. Add `localhost` and every deployed host to Firebase
+Authentication → Settings → Authorized domains.
 
 ### Server (never committed)
 
